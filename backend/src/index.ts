@@ -172,7 +172,7 @@ const specs = swaggerJsdoc({
       },
     },
   },
-  apis: [path.resolve(__dirname, './routes/*.ts')],
+  apis: [path.resolve(__dirname, './routes/*.js')],
 });
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
@@ -201,7 +201,7 @@ const server = app.listen(port, async () => {
     logger.error('Failed to connect to database', error);
     process.exit(1);
   }
-  logger.info(`API server is running at http://localhost:${port}`);
+  logger.info(`API server is running at ${process.env.BASE_URL || `http://localhost:${port}`}`);
   logger.info(`Swagger docs at http://localhost:${port}/api-docs`);
 });
 
