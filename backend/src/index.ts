@@ -196,6 +196,9 @@ app.use(errorHandler);
 const server = app.listen(port, async () => {
   try {
     await sequelize.authenticate();
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.sync();
+    }
     logger.info('Database connected successfully (Sequelize)');
   } catch (error) {
     logger.error('Failed to connect to database', error);
