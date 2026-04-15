@@ -91,3 +91,4 @@ src/
 
 Full API docs at http://localhost:3000/api-docs
 
+// "start": "cross-env NODE_ENV=production node dist/index.js",

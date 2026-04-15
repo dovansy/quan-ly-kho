@@ -1,6 +1,6 @@
 import path from 'path';
 import dotenv from 'dotenv';
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config();
 
 import 'express-async-errors'; // auto-catch async errors → errorHandler
 
@@ -28,7 +28,10 @@ const apiPrefix = process.env.API_PREFIX || '/api/v1';
 // ── Middleware ─────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3001', 'http://127.0.0.1:5173'],
+  origin: [
+    'http://localhost:5173',
+    'https://quanlykhosy.vercel.app'
+  ],
   credentials: true,
 }));
 app.use(compression());
@@ -44,7 +47,11 @@ const specs = swaggerJsdoc({
       version: '1.0.0',
       description: 'API quản lý tồn kho - Warehouse Inventory Management',
     },
-    servers: [{ url: `http://localhost:${port}` }],
+    servers: [
+      {
+        url: process.env.BASE_URL || `http://localhost:${port}`,
+      },
+    ],
     components: {
       securitySchemes: {
         BearerAuth: {
