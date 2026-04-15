@@ -91,4 +91,5 @@ src/
 
 Full API docs at http://localhost:3000/api-docs
 
+// "dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only src/index.ts",
 // "start": "cross-env NODE_ENV=production node dist/index.js",
