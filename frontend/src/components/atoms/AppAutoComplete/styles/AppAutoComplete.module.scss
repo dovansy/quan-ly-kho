@@ -1,0 +1,44 @@
+.appAutoComplete {
+  &:global(.ant-select) {
+    display: flex !important;
+    align-items: center !important;
+    width: 100%;
+    height: 48px !important;
+
+    :global(.ant-select-selector) {
+      background-color: transparent !important;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 22px;
+      height: 100% !important;
+      width: 100%;
+      box-shadow: none !important;
+      border-color: var(--select-primary-border) !important;
+      padding: 0 12px 0 16px;
+
+      :global(.ant-select-selection-search) {
+        display: flex;
+        align-items: center;
+      }
+    }
+
+    &:global(.ant-select-focused) {
+      :global(.ant-select-selector) {
+        border-color: var(--select-tree-checkbox-bg) !important;
+      }
+    }
+
+    &:not(:global(.ant-select-disabled)):hover {
+      :global(.ant-select-selector) {
+        border-color: var(--select-tree-checkbox-bg) !important;
+      }
+    }
+
+    &:global(.ant-select-status-error),
+    &:global(.ant-select-status-error:hover) {
+      :global(.ant-select-selector) {
+        border-color: var(--select-primary-border-error) !important;
+      }
+    }
+  }
+}

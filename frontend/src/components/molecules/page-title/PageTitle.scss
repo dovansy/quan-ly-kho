@@ -1,0 +1,22 @@
+.main-content-heading {
+  h1 {
+    color: var(--gray-6);
+
+    /* H3/Bold */
+    font-size: 32px;
+    line-height: 40px;
+    /* 125% */
+
+    padding-left: 18px;
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 8px;
+      height: 100%;
+      border-radius: 4px;
+      background-color: var(--primary);
+    }
+  }
+}

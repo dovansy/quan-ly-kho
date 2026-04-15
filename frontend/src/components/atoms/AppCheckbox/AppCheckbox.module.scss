@@ -1,0 +1,33 @@
+.appCheckbox {
+  font-size: 16px !important;
+  line-height: 22px !important;
+
+  :global(.ant-checkbox) {
+    :global(.ant-checkbox-inner) {
+      background-color: transparent;
+      width: 20px !important;
+      height: 20px !important;
+      border-color: var(--checkbox-border-unchecked);
+      border-width: 1.5px;
+      border-radius: 4px;
+    }
+  }
+
+  :global(.ant-checkbox-checked) {
+    :global(.ant-checkbox-inner) {
+      background-color: var(--checkbox-bg-checked) !important;
+      border-color: var(--checkbox-border-checked) !important;
+    }
+
+    :global(.ant-checkbox-inner)::after {
+      border-width: 1.5px;
+      border-color: #fff;
+      inset-inline-start: 28%;
+      top: 46%;
+    }
+  }
+
+  :global(.ant-checkbox-disabled) {
+    opacity: 0.4;
+  }
+}

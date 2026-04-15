@@ -1,0 +1,45 @@
+button.ant-switch {
+  max-width: 48px;
+  height: 28px !important;
+  line-height: 28px !important;
+  background-color: var(--switch-bg-unchecked);
+
+  &.ant-switch-checked {
+    background-color: var(--switch-bg-checked);
+  }
+
+  &:hover:not(.ant-switch-disabled) {
+    background-color: var(--switch-bg-unchecked-hover);
+  }
+
+  &.ant-switch-small {
+    max-width: 28px;
+    height: 16px !important;
+    line-height: 16px !important;
+  }
+
+  &:not(.ant-switch-small) {
+    .ant-switch-handle {
+      width: 20px;
+      height: 20px;
+      top: 4px;
+      inset-inline-start: 4px;
+
+      &::before {
+        border-radius: 50%;
+      }
+    }
+  }
+
+  &:not(.ant-switch-small) {
+    &.ant-switch-checked {
+      .ant-switch-handle {
+        inset-inline-start: calc(100% - 24px);
+      }
+    }
+  }
+}
+
+.ant-radio-disabled {
+  opacity: 0.4;
+}

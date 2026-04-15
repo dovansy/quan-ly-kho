@@ -1,0 +1,613 @@
+.ant-layout .ant-layout-sider {
+  background-color: var(--background-main);
+
+  .ant-layout-sider-children {
+    padding-top: 32px !important;
+  }
+}
+
+.ant-breadcrumb ol {
+  align-items: center;
+
+  li {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.ant-breadcrumb-link {
+  font-size: 18px !important;
+  line-height: 24px;
+
+  &.text-gray-6 {
+    color: var(--gray-6);
+    font-weight: 500;
+  }
+}
+
+// SIDER
+.sider-admin {
+  .ant-menu-title-content {
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .ant-menu-inline>.ant-menu-submenu>.ant-menu-submenu-title,
+  .ant-menu-submenu-title,
+  .ant-menu-inline .ant-menu-item {
+    height: 44px;
+    max-width: 1440px;
+
+    padding: 0 26px;
+    margin: 10px 0 0 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 15px;
+    border-radius: 0 !important;
+    width: 100%;
+
+    &.ant-menu-item-only-child {
+      margin: 0;
+      padding-left: 65px !important;
+      background: none;
+
+      &::after {
+        background: none;
+      }
+    }
+  }
+
+  .ant-menu-title-content {
+    color: var(--btn-text-gray-17-text);
+
+    font-size: 16px;
+
+    font-weight: 400;
+    line-height: 22px;
+  }
+
+  .ant-menu-inline .ant-menu-sub.ant-menu-inline {
+    background: transparent;
+  }
+
+  .ant-menu-submenu-selected>.ant-menu-submenu-title,
+  .ant-menu-item.ant-menu-item-selected {
+    background: var(--btn-text-bg-lighter);
+    border-radius: 0;
+
+    svg {
+      path {
+        fill: var(--primary);
+      }
+    }
+
+    .ant-modal-footer {
+      position: relative;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background-color: var(--primary);
+    }
+
+    &>.ant-menu-title-content {
+      color: var(--input-text);
+    }
+  }
+
+  .ant-menu-item-selected {
+    background: transparent;
+
+    .ant-menu-title-content {
+      color: var(--btn-text-color) !important;
+    }
+  }
+
+  .ant-menu-item:not(.ant-menu-item-selected):hover {
+    border-radius: 0 !important;
+  }
+}
+
+// SIDER
+
+// CONTENT
+.main-content {
+  padding: 24px 28px 40px;
+  background-color: var(--light-gray);
+
+  .main-content-detail {
+    margin-top: 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.051);
+    background: var(--background-main);
+
+    /* Blur */
+    backdrop-filter: blur(10px);
+  }
+}
+
+// CONTENT
+
+// MODAL
+.ant-modal.modal {
+  padding: 0;
+  width: unset;
+  height: unset;
+  display: flex;
+  justify-content: center;
+
+  .modal-content {
+    text-align: center;
+  }
+
+  textarea {
+    min-height: 90px;
+  }
+
+  &.admins {
+    .ant-modal-content {
+      height: 420px;
+    }
+  }
+
+  &.edit {
+    .ant-modal-content {
+      height: 342px;
+
+      .ant-row {
+        margin: 0;
+      }
+    }
+  }
+
+  &.feature-flag {
+    .ant-modal-content {
+      height: 554px;
+
+      .ant-row {
+        margin: 0;
+      }
+    }
+  }
+
+  &.payment {
+    .ant-modal-content {
+      width: 768px;
+      height: min-content;
+
+      .ant-flex-align-center {
+        margin-bottom: 32px;
+      }
+    }
+  }
+}
+
+.modal .ant-modal-content {
+  width: 432px;
+  height: min-content;
+  padding: 39px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--background-main);
+  box-shadow:
+    0px 11px 25px 0px rgba(0, 0, 0, 0.1),
+    0px 46px 46px 0px rgba(0, 0, 0, 0.09),
+    0px 103px 62px 0px rgba(0, 0, 0, 0.05),
+    0px 183px 73px 0px rgba(0, 0, 0, 0.01),
+    0px 286px 80px 0px rgba(0, 0, 0, 0);
+
+  position: relative;
+
+  .ant-row {
+    .ant-form-item-control {
+      width: 100%;
+
+      .textarea {
+        margin-top: 3px;
+        height: 90px;
+        padding: 12px 16px;
+      }
+    }
+  }
+
+  .ant-modal-body {
+    height: 100%;
+    display: grid;
+    align-content: space-between;
+  }
+
+  .modal-content {
+    margin-top: 20px;
+
+    color: var(--btn-primary-gray-text);
+
+    /* Body-1/Bold */
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 24px;
+
+    white-space: nowrap;
+
+    &.link {
+      margin-top: 0;
+      font-size: 28px;
+    }
+  }
+
+  // .ant-modal-close,
+  .ant-modal-footer {
+    display: none;
+  }
+
+  .btn-group {
+    justify-content: space-between;
+
+    button {
+      width: 166px;
+    }
+  }
+}
+
+.feature-flag-name {
+  width: 100%;
+
+  border-radius: 8px;
+  border: 1px solid var(--gray-4);
+  background: var(--bg-input-disabled);
+
+  padding: 12px 16px;
+
+  color: var(--input-text);
+
+  /* Body-2/Ragular */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  /* 137.5% */
+}
+
+.ant-modal-content.modal.feature-flag {
+  width: 443px;
+  height: 554px;
+}
+
+.btn-replace {
+  width: 104px;
+}
+
+// MODAL
+
+//TABLE
+.main-content-detail {
+  padding: 32px;
+
+  .ant-table-cell::before {
+    display: none;
+  }
+
+  .ant-table-wrapper {
+    border-radius: 12px;
+    border: 1px solid var(--border-table);
+
+    .ant-table-thead>tr>th {
+      background-color: rgba(50, 124, 200, 0.2);
+      height: 48px;
+    }
+
+    // th.ant-table-cell {
+    // 	white-space: nowrap;
+    // }
+
+    .ant-table-row.ant-table-row-level-0 {
+      height: 48px;
+    }
+
+    .ant-table-cell,
+    .ant-table-thead>tr>th,
+    tfoot>tr>th {
+      font-size: 16px;
+      line-height: 20px;
+      padding: 10px 8px;
+      color: var(--text-main);
+
+      &:first-child {
+        padding-left: 24px;
+      }
+
+      &:last-child {
+        padding-right: 24px;
+      }
+    }
+  }
+
+  .ant-table-wrapper {
+    border: none;
+
+    .ant-table.ant-table-empty {
+      .ant-table-tbody>tr>td {
+        &:last-child {
+          border-bottom: none !important;
+        }
+      }
+    }
+  }
+
+  .ant-table {
+    border-width: 0;
+    border: 1px solid var(--border-table);
+  }
+
+  .ant-table.ant-table-empty {
+    border: none !important;
+  }
+
+  .ant-pagination-options {
+    display: none !important;
+  }
+
+  .ant-table-pagination.ant-pagination {
+    margin-top: 20px;
+
+    display: flex;
+    align-items: center;
+  }
+
+  .ant-pagination {
+    display: flex;
+    align-items: center;
+
+    .ant-pagination-jump-next,
+    .ant-pagination-jump-prev {
+      .ant-pagination-item-container .ant-pagination-item-ellipsis {
+        color: var(--text-main);
+        top: unset;
+        font-size: 8px;
+        font-weight: 400;
+        line-height: 20px;
+      }
+    }
+
+    .ant-pagination-next,
+    .ant-pagination-prev {
+      display: flex;
+      align-items: center;
+
+      svg {
+        path {
+          stroke: var(--primary);
+        }
+      }
+
+      &.ant-pagination-disabled svg {
+        path {
+          stroke: var(--gray-2);
+        }
+      }
+    }
+
+    .ant-pagination-item {
+      height: unset;
+
+      a {
+        display: flex;
+        width: 37px;
+        height: 37px;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .ant-pagination-item-active {
+      border-color: transparent;
+
+      a {
+        border-radius: 4px;
+        background: var(--border-table);
+      }
+    }
+  }
+
+  .ant-space-item {
+    display: flex;
+  }
+
+  .ant-btn-link {
+    color: var(--primary);
+    padding-left: 0;
+    padding-right: 10px;
+    /* Body-2/Ragular */
+    font-weight: 400;
+    /* 137.5% */
+  }
+}
+
+.main-content-detail.banners {
+
+  .ant-table-cell,
+  tfoot>tr>th {
+    padding: 0;
+    height: 100px;
+  }
+}
+
+//TABLE
+
+// PAYMENT TRANSACTION
+.display-rules {
+  margin-bottom: 20px;
+
+  .display-sort {
+    gap: 12px;
+
+    .ant-select {
+      height: 48px;
+      width: 152px;
+    }
+  }
+}
+
+.detail-btn {
+  color: var(--primary);
+
+  /* Body-2/Ragular */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  /* 137.5% */
+}
+
+.payment-type {
+  text-transform: capitalize;
+}
+
+.payment-status {
+  text-align: center;
+  text-transform: capitalize;
+
+  /* Body-4/Bold */
+
+  font-size: 12px;
+
+  font-weight: 700;
+  line-height: 16px;
+  /* 133.333% */
+
+  padding: 4px 0;
+  width: 85px;
+  border-radius: 8px;
+
+  &.processing {
+    color: var(--btn-default-yellow-text);
+    background: var(--btn-default-yellow-bg-lighter);
+  }
+
+  &.successful {
+    color: var(--btn-default-green-text);
+    background: var(--btn-default-green-bg-lighter);
+  }
+
+  &.failed {
+    color: var(--btn-text-red-text);
+    background: var(--btn-text-red-bg-light);
+  }
+}
+
+// PAYMENT TRANSACTION
+
+//DESCRIPTION
+.ant-descriptions .ant-descriptions-item-container {
+  .ant-descriptions-item-content {
+    color: var(--text-main);
+  }
+
+  .ant-descriptions-item-label {
+    width: 110px;
+    margin-right: 24px;
+
+    color: var(--input-label);
+
+    /* Body-2/Bold */
+
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 22px;
+
+    /* 137.5% */
+    &::after {
+      display: none;
+    }
+  }
+}
+
+//DESCRIPTION
+
+//ADMIN ACCOUNT
+.admin-account-wrap {
+  height: 80vh;
+
+  .admin-account-detail {
+    width: 345px;
+
+    .admin-account-detail-label {
+      color: var(--input-label);
+      /* Body-3/Bold */
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 20px;
+      /* 142.857% */
+
+      margin-bottom: 8px;
+    }
+
+    .edit-name {
+      position: relative;
+
+      .action {
+        position: absolute;
+        top: 0;
+        margin-top: 11.5%;
+        transform: translateY(-20%);
+        left: calc(100% + 16px);
+      }
+
+      .edit-icon {
+        position: absolute;
+        top: 0;
+        margin-top: 11.5%;
+        transform: translateY(0);
+      }
+    }
+
+    .change-pw-btn {
+      margin-top: 8px;
+    }
+
+    .ant-row {
+      display: block;
+
+      .ant-form-item-label {
+        text-align: start;
+      }
+    }
+  }
+}
+
+//ADMIN ACCOUNT
+
+// Glive Table
+.table-glive.ant-table-wrapper {
+  .ant-table-thead>tr>th {
+    white-space: wrap;
+    white-space: pre-wrap;
+  }
+
+  .ant-table-tbody>tr>td {
+    white-space: nowrap;
+  }
+
+  .ant-table-cell,
+  .ant-table-thead>tr>th,
+  tfoot>tr>th {
+    font-size: 14px;
+    height: 60px;
+  }
+}
+
+.switch-label {
+  color: var(--input-label);
+
+  /* Body-2/Ragular */
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  /* 137.5% */
+}
+
+// Glive Table

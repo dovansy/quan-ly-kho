@@ -1,0 +1,39 @@
+.formItem {
+  & label:global(.ant-form-item-required):before {
+    content: none !important;
+  }
+
+  &:global(.ant-form-item) {
+    margin-bottom: auto;
+  }
+
+  &:global(.ant-form-item .ant-form-item-control-input) {
+    min-height: auto;
+  }
+
+  & :global(.ant-form-item-explain) {
+    &:has(:global(.ant-form-item-explain-error):not(:empty)) {
+      margin-top: 8px;
+    }
+
+    & > :global(.ant-form-item-explain-error):not(:empty) {
+      line-height: 20px;
+    }
+  }
+}
+
+.formLabel {
+  color: var(--input-label);
+  font-size: 14px;
+  line-height: 20px;
+
+  &.labelSmall {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  &.labelLarge {
+    font-size: 16px;
+    line-height: 22px;
+  }
+}

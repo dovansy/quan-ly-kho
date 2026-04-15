@@ -1,0 +1,97 @@
+.ant-select-dropdown {
+  // background-color: var(--select-dropdown-primary-bg) !important;
+  padding: 0 !important;
+  // .ant-select-item-option:hover {
+  //   background-color: var(--select-item-bg-hover) !important;
+  // }
+  .rc-virtual-list-holder-inner {
+    & > .ant-select-item.ant-select-item-option-active {
+      background-color: var(--select-item-bg-selected);
+    }
+    & > .ant-select-item.ant-select-item-option-selected {
+      background-color: var(--select-item-bg-selected);
+      border-radius: 0 !important;
+    }
+  }
+}
+
+.ant-select-tree-switcher {
+  display: none;
+}
+
+.ant-tree-select-dropdown {
+  // background-color: var(--select-dropdown-primary-bg) !important;
+  padding: unset !important;
+}
+
+.ant-select-tree-checkbox {
+  align-self: unset !important;
+  margin-top: unset !important;
+  .ant-select-tree-checkbox-inner {
+    margin-left: 5px;
+    border-radius: 4px !important;
+    margin-left: 16px !important;
+    // border-color: var(--select-tree-checkbox-border) !important;
+    // background-color: var(--select-dropdown-primary-bg) !important;
+  }
+}
+
+.ant-select-tree-treenode {
+  align-items: center !important;
+  display: flex !important;
+  height: 40px !important;
+  // background-color: var(--select-dropdown-primary-bg) !important;
+}
+
+// .ant-select-tree-checkbox.ant-select-tree-checkbox-checked {
+//   .ant-select-tree-checkbox-inner {
+//     border-color: var(--select-tree-checkbox-bg) !important;
+//     background-color: var(--select-tree-checkbox-bg) !important;
+//     &:hover {
+//       background-color: var(--select-tree-checkbox-bg-hover) !important;
+//       border-color: var(--select-tree-checkbox-bg-hover) !important;
+//     }
+//   }
+// }
+
+// .ant-select-tree-treenode:hover {
+//   background-color: var(--select-item-bg-hover) !important;
+// }
+
+.ant-select-tree-checkbox + span:hover {
+  background-color: unset !important;
+}
+
+.ant-select-tree-treenode.ant-select-tree-treenode-disabled:first-child {
+  .ant-select-tree-checkbox.ant-select-tree-checkbox-disabled {
+    display: none !important;
+  }
+}
+
+.option-select-all {
+  position: relative;
+  cursor: default !important;
+  .ant-checkbox-wrapper.ant-checkbox-wrapper-in-form-item {
+    width: 100%;
+    .ant-checkbox > .ant-checkbox-inner {
+      border-radius: 4px !important;
+      margin-left: 12px !important;
+    }
+    .text-select {
+      margin-left: 4px;
+    }
+  }
+}
+
+.hr-decoration {
+  height: 1px;
+  width: auto;
+  left: 0;
+  right: 0;
+  margin: 6px 13px 0px;
+  background-color: var(--select-tree-bg-hr);
+}
+
+// .ant-select-selection-placeholder {
+//   padding-left: 4px !important;
+// }

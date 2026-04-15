@@ -1,0 +1,19 @@
+.appTooltip {
+  &:global(.ant-tooltip) {
+    :global(.ant-tooltip-arrow) {
+      &::before {
+        background-color: var(--tooltip-bg);
+      }
+
+      &::after {
+        background-color: var(--tooltip-bg);
+      }
+    }
+
+    & > :global(.ant-tooltip-content) > :global(.ant-tooltip-inner) {
+      background-color: var(--tooltip-bg);
+      border-radius: 2px;
+      font-weight: 400;
+    }
+  }
+}

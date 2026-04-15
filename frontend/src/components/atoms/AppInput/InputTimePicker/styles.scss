@@ -1,0 +1,9 @@
+.ant-picker-ok {
+  button {
+    color: #fff !important;
+    background: #327cc8 !important;
+  }
+  button[disabled] {
+    opacity: 0.5;
+  }
+}

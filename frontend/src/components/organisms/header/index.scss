@@ -1,0 +1,47 @@
+#header {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+
+  background-color: var(--background-header);
+  box-shadow: 0px 4px 8px 0px var(--boxshadow-header);
+
+  .header-wrap {
+    padding: 0 32px;
+
+    height: 68px;
+
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .nav {
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+
+      .user-name {
+        padding: 0;
+        display: flex;
+        align-items: center;
+      }
+
+      .user-info {
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+
+        .user-name {
+          color: var(--btn-primary-gray-text);
+
+          /* Body-3/Bold */
+          font-size: 14px;
+          font-weight: 700;
+          line-height: 20px;
+          /* 142.857% */
+        }
+      }
+    }
+  }
+}

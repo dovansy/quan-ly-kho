@@ -1,0 +1,174 @@
+@mixin filled {
+  color: white;
+  @content;
+}
+
+.notify {
+  padding: 14px 16px !important;
+  border-radius: 8px !important;
+
+  &:global {
+    & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+      & > .ant-notification-notice-message {
+        font-size: 16px;
+        line-height: 1.3;
+        font-weight: 500;
+        margin-bottom: 4px;
+        margin-inline-start: 35px;
+      }
+
+      & > .ant-notification-notice-description {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    }
+
+    &.filled > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+      & > .ant-notification-notice-message {
+        @include filled;
+      }
+
+      & > .ant-notification-notice-description {
+        @include filled;
+      }
+    }
+
+    &.ant-notification-notice-error {
+      &.filled {
+        background-color: #dd3b3a;
+      }
+
+      &.outlined {
+        background: transparent;
+        border: 1px solid #dd3b3a;
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #dd3b3a;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #dd3b3a;
+          }
+        }
+      }
+
+      &.standard {
+        background-color: rgba(221, 59, 58, 0.2);
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #dd3b3a;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #dd3b3a;
+          }
+        }
+      }
+    }
+
+    &.ant-notification-notice-info {
+      &.filled {
+        background-color: #327cc8;
+      }
+
+      &.outlined {
+        background: transparent;
+        border: 1px solid #327cc8;
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #327cc8;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #327cc8;
+          }
+        }
+      }
+
+      &.standard {
+        background-color: rgba(50, 124, 200, 0.2);
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #327cc8;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #327cc8;
+          }
+        }
+      }
+    }
+
+    &.ant-notification-notice-warning {
+      &.filled {
+        background-color: #ffc655;
+      }
+
+      &.outlined {
+        background: transparent;
+        border: 1px solid #ffc655;
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #ffc655;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #ffc655;
+          }
+        }
+      }
+
+      &.standard {
+        background-color: rgba(255, 199, 87, 0.3);
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #ffc655;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #ffc655;
+          }
+        }
+      }
+    }
+
+    &.ant-notification-notice-success {
+      &.filled {
+        background-color: #06bf71;
+      }
+
+      &.outlined {
+        background: transparent;
+        border: 1px solid #06bf71;
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #06bf71;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #06bf71;
+          }
+        }
+      }
+
+      &.standard {
+        background-color: rgba(6, 191, 113, 0.2);
+
+        & > .ant-notification-notice-content > div.ant-notification-notice-with-icon {
+          & > .ant-notification-notice-message {
+            color: #06bf71;
+          }
+
+          & > .ant-notification-notice-description {
+            color: #06bf71;
+          }
+        }
+      }
+    }
+  }
+}

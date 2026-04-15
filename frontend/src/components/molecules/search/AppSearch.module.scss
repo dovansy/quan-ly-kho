@@ -1,0 +1,115 @@
+@mixin input-common-styles {
+  font-weight: 400;
+  line-height: 22px;
+  font-size: 16px;
+  color: var(--input-text);
+  background-color: transparent;
+  @content;
+}
+
+@mixin input-lg-styles {
+  &:global(.ant-input-lg) {
+    line-height: 24px;
+    font-size: 18px;
+    @content;
+  }
+}
+
+@mixin input-sm-styles {
+  &:global(.ant-input-sm) {
+    line-height: 20px;
+    font-size: 14px;
+    @content;
+  }
+}
+
+@mixin input-focus {
+  &:focus {
+    box-shadow: none;
+  }
+}
+
+.appSearch {
+  max-width: 345px;
+
+  &:global(.ant-input-affix-wrapper) {
+    background-color: transparent;
+    height: 48px;
+
+    & {
+      box-shadow: none !important;
+    }
+
+    & input:global(.ant-input) {
+      @include input-common-styles;
+      @include input-lg-styles;
+      @include input-sm-styles;
+    }
+
+    border-color: var(--input-border);
+    padding: 12px 12px 12px 16px;
+
+    &:hover {
+      border-color: var(--input-border-hover);
+    }
+
+    &:global(.ant-input-affix-wrapper-lg) {
+      padding: 16px;
+      height: 56px;
+    }
+
+    &:global(.ant-input-affix-wrapper-sm) {
+      padding: 10px 16px;
+      height: 40px;
+    }
+
+    & > :global(.ant-input-prefix) {
+      min-width: 20px;
+      margin-inline-end: 8px;
+    }
+
+    &:global(.ant-input-affix-wrapper-status-error).notDisabled {
+      &:global(.ant-input-affix-wrapper):hover {
+        border-color: var(--input-border-error);
+      }
+
+      background-color: var(--input-bg-error);
+
+      & input:global(.ant-input) {
+        background-color: transparent;
+      }
+    }
+  }
+
+  &:global(.ant-input) {
+    @include input-focus;
+
+    @include input-common-styles {
+      border-color: var(--input-border);
+      padding: 13px 16px;
+    }
+
+    @include input-lg-styles {
+      padding: 16px;
+      height: 56px;
+    }
+
+    @include input-sm-styles {
+      padding: 10px 16px;
+      height: 40px;
+    }
+
+    &:global(.ant-input-status-error):not(:disabled) {
+      box-shadow: none !important;
+      background-color: var(--input-bg-error);
+
+      &:hover {
+        border-color: var(--input-border-error) !important;
+      }
+    }
+  }
+
+  &::placeholder {
+    color: var(--input-text);
+  }
+}

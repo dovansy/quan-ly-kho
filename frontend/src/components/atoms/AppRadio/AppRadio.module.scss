@@ -1,0 +1,35 @@
+.appRadio {
+  font-size: 16px !important;
+  line-height: 22px !important;
+
+  :global(.ant-radio) {
+    :global(.ant-radio-inner) {
+      background-color: transparent;
+      width: 18px !important;
+      height: 18px !important;
+      border-color: var(--checkbox-border-unchecked) !important;
+      border-width: 1.5px;
+    }
+  }
+
+  :global(.ant-radio):hover {
+    :global(.ant-radio-inner) {
+      border-color: var(--checkbox-border-checked) !important;
+    }
+  }
+
+  :global(.ant-radio-checked) {
+    :global(.ant-radio-inner) {
+      background-color: transparent !important;
+      border-color: var(--checkbox-border-checked) !important;
+    }
+    :global(.ant-radio-inner)::after {
+      transform: scale(0.66) !important;
+      background-color: var(--checkbox-bg-checked);
+    }
+  }
+
+  :global(.ant-radio-disabled) {
+    opacity: 0.4;
+  }
+}

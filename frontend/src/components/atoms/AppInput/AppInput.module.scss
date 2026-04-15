@@ -1,0 +1,185 @@
+@mixin input-common-styles {
+  font-weight: 400;
+  line-height: 22px;
+  font-size: 16px;
+  color: var(--input-text);
+  background-color: transparent;
+  @content;
+}
+
+@mixin input-lg-styles {
+  &:global(.ant-input-lg) {
+    line-height: 24px;
+    font-size: 18px;
+    @content;
+  }
+  &:global(.ant-picker-large) {
+    line-height: 24px;
+    font-size: 18px;
+    @content;
+  }
+}
+
+@mixin input-sm-styles {
+  &:global(.ant-input-sm) {
+    line-height: 20px;
+    font-size: 14px;
+    @content;
+  }
+  &:global(.ant-picker-small) {
+    line-height: 20px;
+    font-size: 14px;
+    @content;
+  }
+}
+
+@mixin input-focus {
+  &:focus {
+    box-shadow: none;
+  }
+}
+
+.appInput {
+  &:global {
+    &.ant-input-affix-wrapper {
+      background-color: transparent;
+
+      & > :global(.ant-input-prefix) {
+        margin-inline-end: 8px;
+      }
+
+      & {
+        box-shadow: none !important;
+      }
+
+      & input:global(.ant-input) {
+        @include input-common-styles;
+        @include input-lg-styles;
+        @include input-sm-styles;
+      }
+
+      &:not(:global(.ant-input-affix-wrapper-disabled)) {
+        &:hover {
+          border-color: var(--input-border-hover);
+        }
+      }
+
+      &:global {
+        border-color: var(--input-border);
+        padding: 12px 12px 12px 16px;
+
+        &.ant-input-affix-wrapper-disabled {
+          border-color: var(--input-border) !important;
+          background-color: var(--input-bg-disabled) !important;
+        }
+
+        &.ant-input-affix-wrapper-lg {
+          padding: 15px 12px 15px 16px;
+          height: 56px;
+        }
+
+        &.ant-input-affix-wrapper-sm {
+          padding: 10px 12px 10px 16px;
+          height: 40px;
+        }
+        & > .ant-input-prefix {
+          min-width: 20px;
+        }
+
+        &.ant-input-affix-wrapper-status-error {
+          border-color: var(--input-border-error);
+
+          & > .ant-input-prefix > * {
+            color: initial;
+          }
+
+          &:not(.ant-input-affix-wrapper-disabled).ant-input-affix-wrapper:hover {
+            border-color: var(--input-border-error);
+          }
+
+          background-color: var(--input-bg-error);
+
+          & input.ant-input {
+            background-color: transparent;
+          }
+        }
+      }
+    }
+  }
+
+  &:global(.ant-input) {
+    @include input-focus;
+    @include input-common-styles {
+      border-color: var(--input-border);
+      padding: 12px 12px 12px 16px;
+    }
+    @include input-lg-styles {
+      padding: 16px;
+      height: 56px;
+    }
+    @include input-sm-styles {
+      padding: 10px 12px 10px 16px;
+      height: 40px;
+    }
+
+    &:global(.ant-input-status-error) {
+      border-color: var(--input-border-error);
+
+      box-shadow: none !important;
+      background-color: var(--input-bg-error);
+
+      &:hover {
+        border-color: var(--input-border-error);
+      }
+    }
+
+    &:not(:disabled):hover {
+      border-color: var(--input-border-hover);
+    }
+
+    &:disabled {
+      border-color: var(--input-border) !important;
+      background-color: var(--input-bg-disabled) !important;
+    }
+  }
+
+  &:global(.ant-picker.ant-picker-small) {
+    @include input-focus;
+    @include input-common-styles {
+      border-color: var(--input-border);
+      padding: 12px 12px 12px 16px;
+    }
+    @include input-lg-styles {
+      padding: 16px;
+      height: 56px;
+    }
+    @include input-sm-styles {
+      padding: 10px 12px 10px 16px;
+      height: 40px;
+    }
+
+    &:global(.ant-input-status-error) {
+      border-color: var(--input-border-error);
+
+      box-shadow: none !important;
+      background-color: var(--input-bg-error);
+
+      &:hover {
+        border-color: var(--input-border-error);
+      }
+    }
+
+    &:not(:disabled):hover {
+      border-color: var(--input-border-hover);
+    }
+
+    &:disabled {
+      border-color: var(--input-border) !important;
+      background-color: var(--input-bg-disabled) !important;
+    }
+  }
+
+  &::placeholder {
+    color: var(--input-text-placeholder);
+  }
+}

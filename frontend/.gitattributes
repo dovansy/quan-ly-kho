@@ -1,0 +1,9 @@
+# Husky hooks must always use LF
+.husky/* text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Source code
+*.ts text eol=lf
+*.tsx text eol=lf

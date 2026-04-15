@@ -1,0 +1,179 @@
+@use './colors';
+
+:root {
+  --text-main: #{colors.$black};
+  --background-main: #{colors.$white};
+  --background-header: #{colors.$bg-header};
+  --boxshadow-header: #{colors.$box-shadow-header};
+  --border: #{colors.$gray};
+
+  /* Button variable */
+  --btn-primary-bg: #{colors.$primary};
+  --btn-primary-border-disabled: #{colors.$gray};
+  --btn-primary-bg-disabled: #{colors.$gray};
+  --btn-primary-text-disabled: #{colors.$gray-4};
+  --btn-primary-small-text-disabled: #{colors.$gray};
+  --btn-primary-small-bg-disabled: #{colors.$gray-7};
+
+  --btn-primary-bg-hover: #{colors.$primary-darker};
+
+  --btn-primary-red-bg: #{colors.$red};
+  --btn-primary-red-bg-hover: #{colors.$red-darker};
+
+  --btn-primary-yellow-bg: #{colors.$yellow};
+  --btn-primary-yellow-bg-hover: #{colors.$yellow-darker};
+
+  --btn-primary-purple-bg: #{colors.$purple};
+  --btn-primary-purple-bg-hover: #{colors.$purple-darker};
+
+  --btn-primary-green-bg: #{colors.$green};
+  --btn-primary-green-bg-hover: #{colors.$green-darker};
+
+  --btn-primary-gray-bg: #{colors.$gray};
+  --btn-primary-gray-text: #{colors.$gray-6};
+  --btn-primary-gray-bg-hover: #{colors.$gray-darker};
+  --btn-primary-gray-text-hover: #{colors.$gray-6};
+
+  --btn-default-text-disabled: #{colors.$gray-13};
+  --btn-default-border-disabled: #{colors.$gray-13};
+
+  --btn-default-border: #{colors.$primary};
+  --btn-default-text: #{colors.$primary};
+  --btn-default-bg-hover: #{colors.$blue-lighter-bg};
+
+  --btn-default-red-border: #{colors.$red};
+  --btn-default-red-text: #{colors.$red};
+  --btn-default-red-border-hover: #{colors.$red};
+  --btn-default-red-text-hover: #{colors.$red-lighter};
+  --btn-default-red-bg-hover: #{colors.$red-lighter-2};
+
+  --btn-default-purple-text: #{colors.$purple};
+  --btn-default-purple-border: #{colors.$purple};
+  --btn-default-purple-text-hover: #{colors.$purple};
+  --btn-default-purple-border-hover: #{colors.$purple};
+  --btn-default-purple-bg-hover: #{colors.$purple-lighter};
+
+  --btn-default-yellow-text: #{colors.$yellow};
+  --btn-default-yellow-bg-lighter: #{colors.$yellow-lighter-4};
+  --btn-default-yellow-border: #{colors.$yellow};
+  --btn-default-yellow-text-hover: #{colors.$yellow-darker};
+  --btn-default-yellow-border-hover: #{colors.$yellow};
+  --btn-default-yellow-bg-hover: #{colors.$yellow-lighter-3};
+
+  --btn-default-gray-text: #{colors.$gray-6};
+  --btn-default-gray-border: #{colors.$gray-4};
+  --btn-default-gray-text-hover: #{colors.$gray-6};
+  --btn-default-gray-border-hover: #{colors.$gray-4};
+  --btn-default-gray-bg-hover: #{colors.$gray-lighter-2};
+
+  --btn-default-green-text: #{colors.$green};
+  --btn-default-green-bg-lighter: #{colors.$green-lighter-3};
+  --btn-default-green-border: #{colors.$green};
+  --btn-default-green-text-hover: #{colors.$green};
+  --btn-default-green-border-hover: #{colors.$green};
+  --btn-default-green-bg-hover: #{colors.$green-lighter-2};
+
+  --btn-text-color: #{colors.$primary};
+  --btn-text-color-hover: #{colors.$primary};
+  --btn-text-bg-hover: #{colors.$primary-lighter};
+  --btn-text-bg-lighter: #{colors.$primary-lighter-2};
+  --btn-text-color-disabled: #{colors.$gray-4};
+
+  --btn-text-red-text: #{colors.$red};
+  --btn-text-red-bg-light: #{colors.$red-lighter-5};
+  --btn-text-red-bg-hover: #{colors.$red-lighter-2};
+  --btn-text-red-text-hover: #{colors.$red-darker};
+
+  --btn-text-purple-text: #{colors.$purple};
+  --btn-text-purple-text-hover: #{colors.$purple};
+  --btn-text-purple-bg-hover: #{colors.$purple-lighter};
+  --btn-text-purple-bg-rejected: #{colors.$purple-lighter-1};
+
+  --btn-text-yellow-text: #{colors.$yellow};
+  --btn-text-yellow-text-hover: #{colors.$yellow-darker};
+  --btn-text-yellow-bg-hover: #{colors.$yellow-lighter-3};
+
+  --btn-text-green-text: #{colors.$green};
+  --btn-text-green-text-hover: #{colors.$green};
+  --btn-text-green-bg-hover: #{colors.$green-lighter-2};
+
+  --btn-text-gray-text: #{colors.$gray-6};
+  --btn-text-gray-17-text: #{colors.$gray-17};
+  --btn-text-gray-text-hover: #{colors.$black};
+  --btn-text-gray-bg-hover: #{colors.$gray-lighter-2};
+
+  /* Input */
+  --input-border: #{colors.$gray-4};
+  --input-text-placeholder: #{colors.$gray-4};
+  --input-text: #{colors.$black-1};
+  --input-border-hover: #{colors.$primary};
+  --input-border-error: #{colors.$red};
+  --input-bg-error: #{colors.$red-lighter-3};
+  --input-label: #{colors.$gray-2};
+  --input-bg-disabled: #{colors.$gray-lighter-3};
+
+  /* Tooltip */
+  --tooltip-bg: #{colors.$gray-6};
+
+  /* Select */
+  --select-primary-border-error: #{colors.$red};
+  --select-primary-border: #{colors.$gray-4};
+  --select-dropdown-primary-bg: #{colors.$black-5};
+  --select-item-bg-hover: #{colors.$black-6};
+  --select-item-bg-selected: #{colors.$blue-4};
+  --select-tree-checkbox-bg: #{colors.$blue};
+  --select-tree-checkbox-border: #{colors.$gray-4};
+  --select-tree-checkbox-bg-hover: #{colors.$blue-3};
+  --select-tree-bg-hr: #{colors.$gray-16};
+
+  /* Checkbox */
+  --checkbox-border-unchecked: #{colors.$gray-4};
+  --checkbox-border-checked: #{colors.$primary};
+  --checkbox-bg-checked: #{colors.$primary};
+
+  /* Table */
+  --table-header-bg: #{colors.$blue-6};
+  --table-row-bg-hover: #{colors.$blue-7};
+  --runner-white: #{colors.$white-2};
+  --border-table: #{colors.$border-table};
+
+  /* Switch */
+  --switch-bg-checked: #{colors.$primary};
+  --switch-bg-unchecked: #{colors.$gray-14};
+  --switch-bg-unchecked-hover: #{colors.$gray-4};
+
+  --white: #{colors.$white};
+  --link-color: #{colors.$blue-1};
+  --telegram-bg-color: #{colors.$blue-2};
+
+  /* Auth */
+  --login-form-text-gray: #{colors.$gray-6};
+  --auth-code-bg: #{colors.$gray-3};
+  --auth-code-text-color: #{colors.$primary};
+  --auth-code-error-border: #{colors.$red};
+  --auth-code-error-bg: #{colors.$red-lighter-4};
+  --auth-code-error-text: #{colors.$red};
+  --auth-code-text-gray: #{colors.$gray-2};
+
+  /* Tailwind vars */
+  --primary: #{colors.$primary};
+  --red: #{colors.$red};
+  --purple: #{colors.$purple};
+  --yellow: #{colors.$yellow};
+  --green: #{colors.$green};
+  --gray: #{colors.$gray};
+  --light-gray: #{colors.$light-gray};
+  --black-1: #{colors.$black-1};
+  --black-2: #{colors.$black-2};
+  --gray-1: #{colors.$gray-1};
+  --gray-2: #{colors.$gray-2};
+  --gray-3: #{colors.$gray-3};
+  --gray-4: #{colors.$gray-4};
+  --gray-5: #{colors.$gray-5};
+  --gray-6: #{colors.$gray-6};
+  --gray-7: #{colors.$gray-7};
+
+  --bg-input-disabled: #{colors.$bg-input-disabled};
+  --bg-betting-limit: #{colors.$bg-betting-limit};
+  --bg-voided: #{colors.$bg-voided-status};
+}

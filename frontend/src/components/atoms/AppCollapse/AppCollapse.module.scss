@@ -1,0 +1,20 @@
+.appCollapse {
+  :global(.ant-collapse) {
+    background-color: transparent;
+  }
+
+  :global(.ant-collapse-content-box) {
+    padding: 0;
+  }
+
+  :global(.ant-collapse-header) {
+    align-items: center;
+  }
+
+  :global(.ant-collapse-header-text) {
+    color: #231f20;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 28px;
+  }
+}

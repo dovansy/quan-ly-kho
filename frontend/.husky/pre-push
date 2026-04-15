@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+echo "🔍 Running ESLint..."
+yarn lint
+
+echo "🔎 Running TypeScript type check..."
+yarn typecheck
