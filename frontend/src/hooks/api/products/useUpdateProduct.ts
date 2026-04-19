@@ -1,13 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { productsService, CreateProductRequest } from '@/services/products.service';
+import { productsService, UpdateProductRequest } from '@/services/products.service';
 import { PRODUCT_QUERY_KEY } from './queryKeys';
 
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data, addStock }: { id: number; data: Partial<CreateProductRequest>; addStock?: boolean }) =>
-      productsService.update(id, data, addStock),
+    mutationFn: ({ id, data }: { id: number; data: UpdateProductRequest }) =>
+      productsService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCT_QUERY_KEY.all });
     },

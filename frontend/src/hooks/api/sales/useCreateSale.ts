@@ -9,6 +9,7 @@ export function useCreateSale() {
     mutationFn: (data: CreateSaleRequest) => salesService.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SALE_QUERY_KEY.all });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }

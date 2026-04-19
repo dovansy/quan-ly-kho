@@ -8,7 +8,6 @@ export interface Warehouse {
   address: string;
   manager: string;
   productCount: number;
-  inventoryValue: number;
   status: string;
   created_at: string;
   updated_at: string;

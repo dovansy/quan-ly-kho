@@ -1,16 +1,20 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
+import sequelize from '../models/index';
 import { User, Role } from '../models';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
+import { UserRole, hasRole } from '../middleware/authMiddleware';
+
+const ALLOWED_ROLES: UserRole[] = ['super_admin', 'admin'];
 
 export class AccountController {
   getAccounts = async (req: Request, res: Response): Promise<void> => {
     const { keyword, status } = req.query as Record<string, string>;
 
-    const where: any = {};
-    if (keyword) where[Op.or] = [
+    const where: Record<string, unknown> = {};
+    if (keyword) where[Op.or as unknown as string] = [
       { full_name: { [Op.like]: `%${keyword}%` } },
       { username: { [Op.like]: `%${keyword}%` } },
     ];
@@ -26,11 +30,23 @@ export class AccountController {
   };
 
   createAccount = async (req: Request, res: Response): Promise<void> => {
-    const { fullName, username, email, phone, password } = req.body;
+    const { fullName, username, email, phone, password, role } = req.body;
 
     if (!username || !password) {
       sendError(res, ErrorCode.REQUIRED, 'Username and password are required', 400); return;
     }
+    if (String(password).length < 6) {
+      sendError(res, ErrorCode.EMPTY, 'Password must be at least 6 characters', 400); return;
+    }
+    const roleName: UserRole = (role || 'admin') as UserRole;
+    if (!ALLOWED_ROLES.includes(roleName)) {
+      sendError(res, ErrorCode.REQUIRED, `Role must be one of: ${ALLOWED_ROLES.join(', ')}`, 400); return;
+    }
+    // Only super_admin can create a super_admin account.
+    if (roleName === 'super_admin' && !hasRole(req.user, 'super_admin')) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can create super_admin accounts', 403); return;
+    }
+
     if (await User.findOne({ where: { username } })) {
       sendError(res, ErrorCode.USERNAME_EXISTED, 'Username already exists', 409); return;
     }
@@ -38,23 +54,27 @@ export class AccountController {
       sendError(res, ErrorCode.EXISTED_USER, 'Email already exists', 409); return;
     }
 
-    const user = await User.create({
-      full_name: fullName, username, email, phone,
-      password_hash: await bcrypt.hash(password, 10),
+    const roleRow = await Role.findOne({ where: { role: roleName } });
+    if (!roleRow) { sendError(res, ErrorCode.NOT_FOUND, `Role "${roleName}" does not exist`, 500); return; }
+
+    const newUser = await sequelize.transaction(async (t) => {
+      const user = await User.create({
+        full_name: fullName, username, email, phone,
+        password_hash: await bcrypt.hash(password, 10),
+      }, { transaction: t });
+      await (user as any).addRole(roleRow, { transaction: t });
+      return user;
     });
 
-    const adminRole = await Role.findOne({ where: { role: 'admin' } });
-    if (adminRole) await (user as any).addRole(adminRole);
-
-    const account = await User.findByPk(user.id, { include: [{ model: Role, as: 'roles' }] });
+    const account = await User.findByPk(newUser.id, { include: [{ model: Role, as: 'roles' }] });
     sendSuccess(res, formatAccount(account!), 'Account created successfully', 201);
   };
 
   updateAccount = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { fullName, email, phone, status } = req.body;
+    const { fullName, email, phone, status, role } = req.body;
 
-    const user = await User.findByPk(id);
+    const user = await User.findByPk(id, { include: [{ model: Role, as: 'roles' }] });
     if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
 
     if (email) {
@@ -62,15 +82,48 @@ export class AccountController {
       if (dup) { sendError(res, ErrorCode.EXISTED_USER, 'Email already exists', 409); return; }
     }
 
-    await user.update({ full_name: fullName, email, phone, status: status || 'active' });
+    const currentRole = (user.roles?.[0] as any)?.role as UserRole | undefined;
+    const newRole = role as UserRole | undefined;
+
+    // Role-change guard: only super_admin can promote to/from super_admin.
+    if (newRole && newRole !== currentRole) {
+      if (!ALLOWED_ROLES.includes(newRole)) {
+        sendError(res, ErrorCode.REQUIRED, `Role must be one of: ${ALLOWED_ROLES.join(', ')}`, 400); return;
+      }
+      const touchesSuperAdmin = newRole === 'super_admin' || currentRole === 'super_admin';
+      if (touchesSuperAdmin && !hasRole(req.user, 'super_admin')) {
+        sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can change super_admin role', 403); return;
+      }
+    }
+
+    await sequelize.transaction(async (t) => {
+      await user.update({ full_name: fullName, email, phone, status: status || user.status }, { transaction: t });
+      if (newRole && newRole !== currentRole) {
+        const roleRow = await Role.findOne({ where: { role: newRole }, transaction: t });
+        if (roleRow) await (user as any).setRoles([roleRow], { transaction: t });
+      }
+    });
 
     const account = await User.findByPk(id, { include: [{ model: Role, as: 'roles' }] });
     sendSuccess(res, formatAccount(account!), 'Account updated successfully');
   };
 
   deleteAccount = async (req: Request, res: Response): Promise<void> => {
-    const deleted = await User.destroy({ where: { id: req.params.id } });
-    if (!deleted) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+    const targetId = Number(req.params.id);
+    if (req.user?.userId === targetId) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Cannot delete your own account', 403); return;
+    }
+
+    const target = await User.findByPk(targetId, { include: [{ model: Role, as: 'roles' }] });
+    if (!target) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+
+    const targetRole = (target.roles?.[0] as any)?.role as UserRole | undefined;
+    // Admin cannot delete admin or super_admin; only super_admin can.
+    if ((targetRole === 'admin' || targetRole === 'super_admin') && !hasRole(req.user, 'super_admin')) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can delete admin accounts', 403); return;
+    }
+
+    await target.destroy();
     sendSuccess(res, null, 'Account deleted successfully');
   };
 }

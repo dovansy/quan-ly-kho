@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware, authorize } from '../middleware/authMiddleware';
 import { AccountController } from '../controllers/accountController';
+import { validate } from '../middleware/validationMiddleware';
+import { createAccountSchema, updateAccountSchema } from '../validators';
 
 export function AccountRoutes(): Router {
   const router = Router();
   const c = new AccountController();
-  router.use(authMiddleware);
+  router.use(authMiddleware, authorize('super_admin', 'admin'));
 
   /**
    * @swagger
@@ -72,7 +74,7 @@ export function AccountRoutes(): Router {
    *       409:
    *         description: Username hoặc email đã tồn tại
    */
-  router.post('/', c.createAccount);
+  router.post('/', validate(createAccountSchema), c.createAccount);
 
   /**
    * @swagger
@@ -104,7 +106,7 @@ export function AccountRoutes(): Router {
    *       404:
    *         description: Tài khoản không tồn tại
    */
-  router.put('/:id', c.updateAccount);
+  router.put('/:id', validate(updateAccountSchema), c.updateAccount);
 
   /**
    * @swagger

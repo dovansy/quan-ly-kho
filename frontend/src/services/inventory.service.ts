@@ -2,48 +2,41 @@ import httpClient from './httpClient';
 import { APIResponse } from '@/types/api.type';
 
 export interface InventoryItem {
+  id: number;
   key: string;
-  name: string;
-  warehouse: string;
-  category: string;
+  product_id: number;
+  product_name: string;
+  category: string | null;
+  warehouse_id: number;
+  warehouse_name: string;
   supplier: string;
   batch: string;
-  quantity: number;
-  minStock: number;
-  price: number;
-  unit: string;
-  expiryDate: string;
-  importDate: string;
-}
-
-export interface InventoryStats {
-  totalItems: number;
-  totalValue: number;
-  lowStockCount: number;
+  stock_pieces: number;
+  nearest_expiry: string | null;
+  small_unit: { id: number; code: string; label: string } | null;
+  updated_at: string;
 }
 
 export interface InventoryFilters {
-  warehouse?: string;
+  keyword?: string;
+  warehouse_id?: number;
   category?: string;
   supplier?: string;
   batch?: string;
-  keyword?: string;
+  includeEmpty?: boolean;
 }
 
 export interface InventoryFilterOptions {
-  warehouses: { label: string; value: string }[];
+  warehouses: { label: string; value: number }[];
   categories: { label: string; value: string }[];
   suppliers: { label: string; value: string }[];
   batches: { label: string; value: string }[];
 }
 
 export const inventoryService = {
-  getAll: (params?: InventoryFilters) =>
+  list: (params?: InventoryFilters) =>
     httpClient.get<APIResponse<InventoryItem[]>>('/inventory', { params }),
 
-  getStats: (params?: Partial<InventoryFilters>) =>
-    httpClient.get<APIResponse<InventoryStats>>('/inventory/stats', { params }),
-
-  getFilters: (params?: Partial<InventoryFilters>) =>
+  filters: (params?: InventoryFilters) =>
     httpClient.get<APIResponse<InventoryFilterOptions>>('/inventory/filters', { params }),
 };

@@ -1,116 +1,139 @@
 import { Request, Response } from 'express';
 import { Op, fn, col, literal } from 'sequelize';
-import { Product, Warehouse } from '../models';
-import { sendSuccess, sendError } from '../utils/responseHelper';
-import { ErrorCode } from '../utils/errorCodes';
-
-function formatDateDDMMYYYY(date: Date | string | null): string {
-  if (!date) return '';
-  const d = new Date(date);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-}
+import { InventoryBalance, Product, Warehouse, SmallUnit } from '../models';
+import { sendSuccess } from '../utils/responseHelper';
 
 export class InventoryController {
-  getInventory = async (req: Request, res: Response): Promise<void> => {
-    const { warehouse, category, supplier, batch, keyword } = req.query as Record<string, string>;
+  /**
+   * GET /inventory — đọc trực tiếp từ inventory_balance (maintained bởi trigger).
+   * Default: chỉ trả về dòng có stock_pieces > 0.
+   */
+  list = async (req: Request, res: Response): Promise<void> => {
+    const {
+      warehouse_id, category, supplier, batch, keyword,
+      includeEmpty,
+    } = req.query as Record<string, string>;
 
     const where: any = {};
-    if (keyword) where[Op.or] = [
-      { name: { [Op.like]: `%${keyword}%` } },
-      { supplier: { [Op.like]: `%${keyword}%` } },
-    ];
-    if (warehouse) where.warehouse_name = warehouse;
-    if (category)  where.category = category;
-    if (supplier)  where.supplier = supplier;
-    if (batch)     where.batch = batch;
+    if (warehouse_id) where.warehouse_id = Number(warehouse_id);
+    if (supplier) where.supplier = supplier;
+    if (batch) where.batch = batch;
+    if (includeEmpty !== 'true') where.stock_pieces = { [Op.gt]: 0 };
 
-    const products = await Product.findAll({ where, order: [['created_at', 'DESC']] });
+    const productWhere: any = {};
+    if (keyword) productWhere.name = { [Op.like]: `%${keyword}%` };
+    if (category) productWhere.category = category;
 
-    sendSuccess(res, products.map(p => ({
-      key: String(p.id),
-      name: p.name,
-      warehouse: p.warehouse_name,
-      category: p.category,
-      supplier: p.supplier,
-      batch: p.batch,
-      quantity: p.quantity,
-      minStock: p.min_stock,
-      price: p.unit_price,
-      unit: p.unit,
-      expiryDate: p.expiry_date,
-      importDate: formatDateDDMMYYYY((p as any).createdAt || p.created_at),
-    })));
+    const rows = await InventoryBalance.findAll({
+      where,
+      attributes: {
+        include: [
+          [literal(`(
+            SELECT units_per_carton FROM stock_imports
+            WHERE product_id = InventoryBalance.product_id
+              AND warehouse_id = InventoryBalance.warehouse_id
+              AND supplier = InventoryBalance.supplier
+              AND batch = InventoryBalance.batch
+            ORDER BY import_date DESC, id DESC
+            LIMIT 1
+          )`), 'units_per_carton'],
+        ],
+      },
+      include: [
+        { model: Product, as: 'product',
+          where: Object.keys(productWhere).length ? productWhere : undefined,
+          include: [{ model: SmallUnit, as: 'defaultSmallUnit' }] },
+        { model: Warehouse, as: 'warehouse' },
+      ],
+      order: [['updated_at', 'DESC']],
+    });
+
+    sendSuccess(res, rows.map(format));
   };
 
-  getFilters = async (req: Request, res: Response): Promise<void> => {
-    const { warehouse, category, supplier, batch, keyword } = req.query as Record<string, string>;
+  /**
+   * Filter dropdowns cho inventory page (cascading).
+   */
+  filters = async (req: Request, res: Response): Promise<void> => {
+    const { warehouse_id, category, supplier, batch, keyword } = req.query as Record<string, string>;
 
-    const toOptions = (rows: any[], field: string) =>
-      rows.map(r => ({ label: r[field], value: r[field] }));
-
-    // Tất cả dropdown đều filter theo tất cả fields đã chọn (trừ chính nó)
     const buildWhere = (excludeField?: string) => {
-      const where: any = {};
-      if (warehouse && excludeField !== 'warehouse') where.warehouse_name = warehouse;
-      if (category && excludeField !== 'category')   where.category = category;
-      if (supplier && excludeField !== 'supplier')   where.supplier = supplier;
-      if (batch && excludeField !== 'batch')         where.batch = batch;
-      if (keyword) where[Op.or] = [
-        { name: { [Op.like]: `%${keyword}%` } },
-        { supplier: { [Op.like]: `%${keyword}%` } },
-      ];
+      const where: any = { stock_pieces: { [Op.gt]: 0 } };
+      if (warehouse_id && excludeField !== 'warehouse') where.warehouse_id = Number(warehouse_id);
+      if (supplier && excludeField !== 'supplier') where.supplier = supplier;
+      if (batch && excludeField !== 'batch') where.batch = batch;
       return where;
     };
 
-    // Kho: nếu chưa có filter nào (trừ warehouse) → lấy tất cả kho active từ bảng warehouses
-    // Nếu đã có filter khác → lấy distinct warehouse_name từ products (cascading)
-    const hasOtherFilters = category || supplier || batch || keyword;
-    const warehouseQuery = hasOtherFilters
-      ? Product.findAll({ attributes: [[fn('DISTINCT', col('warehouse_name')), 'name']], where: { warehouse_name: { [Op.ne]: null }, ...buildWhere('warehouse') }, order: [['warehouse_name', 'ASC']], raw: true })
-      : Warehouse.findAll({ attributes: ['name'], where: { status: 'active' }, order: [['name', 'ASC']], raw: true });
+    const productWhereBase: any = {};
+    if (keyword) productWhereBase.name = { [Op.like]: `%${keyword}%` };
+
+    const productWhereWithCategory = (excludeField?: string) => {
+      const w = { ...productWhereBase };
+      if (category && excludeField !== 'category') w.category = category;
+      return Object.keys(w).length ? w : undefined;
+    };
 
     const [warehouses, categories, suppliers, batches] = await Promise.all([
-      warehouseQuery,
-      Product.findAll({ attributes: [[fn('DISTINCT', col('category')), 'category']], where: { category: { [Op.ne]: null }, ...buildWhere('category') }, order: [['category', 'ASC']], raw: true }),
-      Product.findAll({ attributes: [[fn('DISTINCT', col('supplier')), 'supplier']], where: { supplier: { [Op.ne]: null }, ...buildWhere('supplier') }, order: [['supplier', 'ASC']], raw: true }),
-      Product.findAll({ attributes: [[fn('DISTINCT', col('batch')), 'batch']], where: { batch: { [Op.ne]: null }, ...buildWhere('batch') }, order: [['batch', 'ASC']], raw: true }),
+      Warehouse.findAll({
+        attributes: ['id', 'name'],
+        where: { id: { [Op.in]: literal(`(SELECT DISTINCT warehouse_id FROM inventory_balance WHERE stock_pieces > 0)`) } },
+        order: [['name', 'ASC']],
+      }),
+      Product.findAll({
+        attributes: [[fn('DISTINCT', col('category')), 'value']],
+        where: { category: { [Op.ne]: null }, id: { [Op.in]: literal(`(SELECT DISTINCT product_id FROM inventory_balance WHERE stock_pieces > 0)`) } },
+        order: [['category', 'ASC']],
+        raw: true,
+      }),
+      InventoryBalance.findAll({
+        attributes: [[fn('DISTINCT', col('supplier')), 'value']],
+        where: buildWhere('supplier'),
+        include: productWhereWithCategory('supplier')
+          ? [{ model: Product, as: 'product', where: productWhereWithCategory('supplier'), attributes: [] }]
+          : [],
+        order: [['supplier', 'ASC']],
+        raw: true,
+      }),
+      InventoryBalance.findAll({
+        attributes: [[fn('DISTINCT', col('batch')), 'value']],
+        where: buildWhere('batch'),
+        include: productWhereWithCategory('batch')
+          ? [{ model: Product, as: 'product', where: productWhereWithCategory('batch'), attributes: [] }]
+          : [],
+        order: [['batch', 'ASC']],
+        raw: true,
+      }),
     ]);
 
     sendSuccess(res, {
-      warehouses: toOptions(warehouses, 'name'),
-      categories: toOptions(categories, 'category'),
-      suppliers: toOptions(suppliers, 'supplier'),
-      batches: toOptions(batches, 'batch'),
+      warehouses: warehouses.map((w: any) => ({ label: w.name, value: w.id })),
+      categories: (categories as any[]).map(r => ({ label: r.value, value: r.value })),
+      suppliers: (suppliers as any[]).filter(r => r.value).map(r => ({ label: r.value, value: r.value })),
+      batches: (batches as any[]).filter(r => r.value).map(r => ({ label: r.value, value: r.value })),
     });
   };
 
-  getStats = async (req: Request, res: Response): Promise<void> => {
-    const { warehouse, category, supplier, batch, keyword } = req.query as Record<string, string>;
+}
 
-    const where: any = {};
-    if (warehouse) where.warehouse_name = warehouse;
-    if (category)  where.category = category;
-    if (supplier)  where.supplier = supplier;
-    if (batch)     where.batch = batch;
-    if (keyword) where[Op.or] = [
-      { name: { [Op.like]: `%${keyword}%` } },
-      { supplier: { [Op.like]: `%${keyword}%` } },
-    ];
-
-    const totalItems = await Product.count({ where });
-    const [agg] = await Product.findAll({
-      attributes: [
-        [fn('COALESCE', fn('SUM', literal('quantity * unit_price')), 0), 'totalValue'],
-        [fn('COALESCE', fn('SUM', literal('CASE WHEN quantity <= min_stock THEN 1 ELSE 0 END')), 0), 'lowStockCount'],
-      ],
-      where,
-      raw: true,
-    }) as any[];
-
-    sendSuccess(res, {
-      totalItems,
-      totalValue: Number(agg.totalValue) || 0,
-      lowStockCount: Number(agg.lowStockCount) || 0,
-    });
+function format(row: any) {
+  const json = row.toJSON ? row.toJSON() : row;
+  const product = json.product || {};
+  const smallUnit = product.defaultSmallUnit || null;
+  return {
+    id: json.id,
+    key: String(json.id),
+    product_id: json.product_id,
+    product_name: product.name || null,
+    category: product.category || null,
+    warehouse_id: json.warehouse_id,
+    warehouse_name: json.warehouse?.name || null,
+    supplier: json.supplier,
+    batch: json.batch,
+    stock_pieces: json.stock_pieces,
+    units_per_carton: json.units_per_carton != null ? Number(json.units_per_carton) : null,
+    nearest_expiry: json.nearest_expiry,
+    small_unit: smallUnit ? { id: smallUnit.id, code: smallUnit.code, label: smallUnit.label } : null,
+    updated_at: json.updated_at,
   };
 }

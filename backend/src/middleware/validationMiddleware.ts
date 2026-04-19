@@ -1,138 +1,63 @@
 import { Request, Response, NextFunction } from 'express';
+import { ErrorCode } from '../utils/errorCodes';
 
-import { CustomError, typeErrors } from '../utils/customError';
+export type ValidationRule = (value: unknown, body: Record<string, unknown>) => string | null;
 
-type ValidationRule = {
-  validate: (value: unknown) => boolean;
-  errorCode: number;
-};
+// ── Rule builders ────────────────────────────────────────
+export const required = (msg = 'is required'): ValidationRule =>
+  (v) => (v === undefined || v === null || v === '' ? msg : null);
 
-enum typeParameters {
-  BODY = 'body',
-  QUERY = 'query',
-  PARAMS = 'params'
-}
+export const minLength = (n: number, msg?: string): ValidationRule =>
+  (v) => (typeof v === 'string' && v.length < n ? msg || `must be at least ${n} characters` : null);
 
-class ValidationChain {
-  private field: string;
-  private rules: ValidationRule[];
-  private typeParameter: typeParameters;
+export const maxLength = (n: number, msg?: string): ValidationRule =>
+  (v) => (typeof v === 'string' && v.length > n ? msg || `must be at most ${n} characters` : null);
 
-  constructor(field: string, typeParameter: typeParameters) {
-    this.field = field;
-    this.rules = [];
-    this.typeParameter = typeParameter;
-  }
+export const isEmail = (msg = 'invalid email'): ValidationRule =>
+  (v) => (v && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v)) ? msg : null);
 
-  notNull() {
-    this.rules.push({
-      validate: (value) => value !== null && value !== undefined,
-      errorCode: 0,
-    });
-    return this;
-  }
+export const isIn = (values: readonly unknown[], msg?: string): ValidationRule =>
+  (v) => (v !== undefined && v !== null && !values.includes(v) ? msg || `must be one of: ${values.join(', ')}` : null);
 
-  notEmpty() {
-    this.rules.push({
-      validate: (value) => {
-        if (value === null || value === undefined) return true; // let notNull handle this
-        return String(value).trim().length > 0;
-      },
-      errorCode: 0,
-    });
-    return this;
-  }
+export const isArray = (msg = 'must be an array'): ValidationRule =>
+  (v) => (v !== undefined && !Array.isArray(v) ? msg : null);
 
-  isNumber() {
-    this.rules.push({
-      validate: (value) => {
-        if (value === null || value === undefined) return true;
-        return !isNaN(Number(value));
-      },
-      errorCode: 0,
-    });
-    return this;
-  }
+export const minArrayLength = (n: number, msg?: string): ValidationRule =>
+  (v) => (Array.isArray(v) && v.length < n ? msg || `must have at least ${n} items` : null);
 
-  maxLength(length: number) {
-    this.rules.push({
-      validate: (value) => {
-        if (value === null || value === undefined) return true;
-        return String(value).length <= length;
-      },
-      errorCode: 0,
-    });
-    return this;
-  }
+export const isNumber = (msg = 'must be a number'): ValidationRule =>
+  (v) => (v !== undefined && v !== null && v !== '' && isNaN(Number(v)) ? msg : null);
 
-  /** @deprecated Use maxLength instead */
-  MaxLength(length: number) {
-    return this.maxLength(length);
-  }
+export const isInt = (msg = 'must be an integer'): ValidationRule =>
+  (v) => (v !== undefined && v !== null && v !== '' && !Number.isInteger(Number(v)) ? msg : null);
 
-  minLength(length: number) {
-    this.rules.push({
-      validate: (value) => {
-        if (value === null || value === undefined) return true;
-        return String(value).length >= length;
-      },
-      errorCode: 0,
-    });
-    return this;
-  }
+export const minValue = (n: number, msg?: string): ValidationRule =>
+  (v) => (v !== undefined && v !== null && v !== '' && Number(v) < n ? msg || `must be >= ${n}` : null);
 
-  withErrorCode(errorCode: number) {
-    if (this.rules.length > 0) {
-      this.rules[this.rules.length - 1].errorCode = errorCode;
-    }
-    return this;
-  }
+export type Schema = Record<string, ValidationRule[]>;
 
-  getField() {
-    return this.field;
-  }
-
-  getRules() {
-    return this.rules;
-  }
-
-  getTypeParameter(): typeParameters {
-    return this.typeParameter;
-  }
-}
-
-export const body = (field: string) => new ValidationChain(field, typeParameters.BODY);
-export const query = (field: string) => new ValidationChain(field, typeParameters.QUERY);
-export const params = (field: string) => new ValidationChain(field, typeParameters.PARAMS);
-
-function getValueFromRequest(req: Request, typeParam: typeParameters, field: string): unknown {
-  switch (typeParam) {
-    case typeParameters.BODY: return req.body[field];
-    case typeParameters.PARAMS: return req.params[field];
-    case typeParameters.QUERY: return req.query[field];
-  }
-}
-
-export function validateRequest(validators: ValidationChain[]) {
+/**
+ * Validate req.body against the given schema. Aggregates all errors and returns
+ * 400 with `{ errors: { field: [messages] } }` if any rule fails.
+ */
+export function validate(schema: Schema) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const errorsResult: CustomError[] = [];
-
-    for (const validator of validators) {
-      const value = getValueFromRequest(req, validator.getTypeParameter(), validator.getField());
-
-      for (const rule of validator.getRules()) {
-        if (!rule.validate(value)) {
-          errorsResult.push(
-            new CustomError(rule.errorCode, typeErrors.VALIDATION_ERROR, req.originalUrl, null),
-          );
-        }
+    const errors: Record<string, string[]> = {};
+    for (const [field, rules] of Object.entries(schema)) {
+      const value = (req.body as Record<string, unknown>)?.[field];
+      for (const rule of rules) {
+        const msg = rule(value, (req.body || {}) as Record<string, unknown>);
+        if (msg) (errors[field] ||= []).push(msg);
       }
     }
-
-    if (errorsResult.length > 0) {
-      next(errorsResult);
-    } else {
-      next();
+    if (Object.keys(errors).length > 0) {
+      return res.status(400).json({
+        code: ErrorCode.REQUIRED,
+        message: 'Validation failed',
+        data: null,
+        errors,
+      });
     }
+    next();
   };
 }

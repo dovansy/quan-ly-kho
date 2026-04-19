@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware, authorize } from '../middleware/authMiddleware';
 import { WarehouseController } from '../controllers/warehouseController';
+import { validate } from '../middleware/validationMiddleware';
+import { createWarehouseSchema, updateWarehouseSchema } from '../validators';
 
 export function WarehouseRoutes(): Router {
   const router = Router();
   const c = new WarehouseController();
-  router.use(authMiddleware);
+  router.use(authMiddleware, authorize('super_admin', 'admin'));
 
   /**
    * @swagger
@@ -97,7 +99,7 @@ export function WarehouseRoutes(): Router {
    *       201:
    *         description: Tạo thành công
    */
-  router.post('/', c.createWarehouse);
+  router.post('/', validate(createWarehouseSchema), c.createWarehouse);
 
   /**
    * @swagger
@@ -129,7 +131,7 @@ export function WarehouseRoutes(): Router {
    *       404:
    *         description: Kho không tồn tại
    */
-  router.put('/:id', c.updateWarehouse);
+  router.put('/:id', validate(updateWarehouseSchema), c.updateWarehouse);
 
   /**
    * @swagger

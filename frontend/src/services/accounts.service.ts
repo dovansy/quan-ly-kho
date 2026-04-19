@@ -18,6 +18,7 @@ export interface CreateAccountRequest {
   email: string;
   phone: string;
   password: string;
+  role: string;
 }
 
 export interface UpdateAccountRequest {
@@ -25,6 +26,7 @@ export interface UpdateAccountRequest {
   email?: string;
   phone?: string;
   status?: string;
+  role?: string;
 }
 
 export interface AccountFilters {

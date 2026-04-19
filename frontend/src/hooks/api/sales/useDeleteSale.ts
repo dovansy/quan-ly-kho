@@ -9,6 +9,7 @@ export function useDeleteSale() {
     mutationFn: (id: number) => salesService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SALE_QUERY_KEY.all });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }

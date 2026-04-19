@@ -12,12 +12,15 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 
 import { errorHandler } from './middleware/errorHandler';
+import { apiLimiter } from './middleware/rateLimiter';
 import { AuthRoutes } from './routes/authRoutes';
 import { ProductRoutes } from './routes/productRoutes';
 import { WarehouseRoutes } from './routes/warehouseRoutes';
 import { SaleRoutes } from './routes/saleRoutes';
 import { AccountRoutes } from './routes/accountRoutes';
 import { InventoryRoutes } from './routes/inventoryRoutes';
+import { SmallUnitRoutes } from './routes/smallUnitRoutes';
+import { StockImportRoutes } from './routes/stockImportRoutes';
 import sequelize from './models';
 import logger from './utils/logger';
 
@@ -81,16 +84,8 @@ const specs = swaggerJsdoc({
             key: { type: 'string' },
             name: { type: 'string' },
             category: { type: 'string' },
-            warehouse_name: { type: 'string' },
-            supplier: { type: 'string' },
-            batch: { type: 'string' },
-            quantity: { type: 'integer' },
-            min_stock: { type: 'integer' },
-            unit_price: { type: 'number' },
-            unit: { type: 'string' },
-            expiry_date: { type: 'string', format: 'date' },
-            imported_by: { type: 'string' },
-            unitEntries: { type: 'array', items: { type: 'object', properties: { id: { type: 'integer' }, unit: { type: 'string' }, quantity: { type: 'integer' }, conversionRate: { type: 'integer' } } } },
+            default_small_unit_id: { type: 'integer' },
+            status: { type: 'string', enum: ['active', 'inactive'] },
           },
         },
         Warehouse: {
@@ -102,7 +97,6 @@ const specs = swaggerJsdoc({
             address: { type: 'string' },
             manager: { type: 'string' },
             productCount: { type: 'integer' },
-            inventoryValue: { type: 'number' },
             status: { type: 'string', enum: ['active', 'inactive'] },
           },
         },
@@ -138,17 +132,16 @@ const specs = swaggerJsdoc({
           type: 'object',
           properties: {
             key: { type: 'string' },
-            name: { type: 'string' },
-            warehouse: { type: 'string' },
+            product_id: { type: 'integer' },
+            product_name: { type: 'string' },
             category: { type: 'string' },
+            warehouse_id: { type: 'integer' },
+            warehouse_name: { type: 'string' },
             supplier: { type: 'string' },
             batch: { type: 'string' },
-            quantity: { type: 'integer' },
-            minStock: { type: 'integer' },
-            price: { type: 'number' },
-            unit: { type: 'string' },
-            expiryDate: { type: 'string', format: 'date' },
-            importDate: { type: 'string', example: '15/04/2026' },
+            stock_pieces: { type: 'integer' },
+            nearest_expiry: { type: 'string', format: 'date' },
+            small_unit: { type: 'object', properties: { id: { type: 'integer' }, code: { type: 'string' }, label: { type: 'string' } } },
           },
         },
         SelectOption: {
@@ -182,12 +175,15 @@ app.get('/health', (_req, res) => {
 });
 
 // ── API Routes ────────────────────────────────────────────
+app.use(apiPrefix, apiLimiter);
 app.use(apiPrefix, AuthRoutes());
 app.use(`${apiPrefix}/products`, ProductRoutes());
 app.use(`${apiPrefix}/warehouses`, WarehouseRoutes());
 app.use(`${apiPrefix}/sales`, SaleRoutes());
 app.use(`${apiPrefix}/accounts`, AccountRoutes());
 app.use(`${apiPrefix}/inventory`, InventoryRoutes());
+app.use(`${apiPrefix}/small-units`, SmallUnitRoutes());
+app.use(`${apiPrefix}/imports`, StockImportRoutes());
 
 // ── Error handler (must be last) ──────────────────────────
 app.use(errorHandler);
@@ -196,9 +192,8 @@ app.use(errorHandler);
 const server = app.listen(port, async () => {
   try {
     await sequelize.authenticate();
-    if (process.env.NODE_ENV !== 'production') {
-      await sequelize.sync();
-    }
+    // Schema được quản lý bởi migration.sql + triggers (xem `npm run seed`).
+    // Không dùng sequelize.sync() để tránh xung đột với triggers/CHECK constraints.
     logger.info('Database connected successfully (Sequelize)');
   } catch (error) {
     logger.error('Failed to connect to database', error);

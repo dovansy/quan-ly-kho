@@ -8,271 +8,273 @@ import { CrudModal } from '@/components/organisms/crud-modal';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { StatCard } from '@/components/molecules/stat-card';
 import { TableSection } from '@/components/organisms/table-section';
-import { saleTypeOptions, saleTypeLabels, unitOptions, paidOptions } from '@/constants/options';
+import { saleTypeLabels, paidOptions } from '@/constants/options';
 import { DATE_FORMAT } from '@/constants/format';
-import { Unit } from '@/constants/enums';
 import { useGetSales, useCreateSale, useUpdateSale, useDeleteSale } from '@/hooks/api/sales';
-import { useGetProductList } from '@/hooks/api/products';
+import { useGetInventory } from '@/hooks/api/inventory';
 import { sttColumn } from '@/utils/tableColumns';
 import { formatCurrency, formatDate, toApiDate } from '@/utils/format';
 import { Col, Form, Row, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
-import { FiPlus, FiSearch, FiTrash2, FiDollarSign, FiAlertCircle } from 'react-icons/fi';
+import { SaleType } from '@/constants/enums';
+import {
+  FiPlus, FiSearch, FiTrash2, FiDollarSign, FiAlertCircle,
+  FiShoppingCart, FiPackage, FiUsers,
+} from 'react-icons/fi';
 
-interface SaleItem {
-  productName: string;
+interface SaleLine {
+  id?: number;
+  inventory_id?: number;          // Reference to inventory_balance for picker UX
+  product_id: number;
+  product_name: string;
+  warehouse_id: number;
+  warehouse_name: string;
+  supplier: string;
+  batch: string;
+  small_unit_id: number;
+  small_unit_label: string;
+  available: number;              // Tồn hiện có
   quantity: number;
-  unit: string;
-  unitPrice: number;
+  unit_price: number;
   total: number;
 }
 
-interface SaleInvoice {
-  key: string;
+interface SaleOrderRow {
   id: number;
-  invoiceCode: string;
-  customerName: string;
-  customerPhone: string;
-  saleType: string;
-  items: SaleItem[];
-  totalAmount: number;
+  key: string;
+  invoice_code: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_address: string;
+  sale_type: string;
+  items: SaleLine[];
+  total_amount: number;
   paid: boolean;
-  saleDate: string;
-  createdBy: string;
+  sale_date: string;
 }
 
-const EMPTY_ITEM: SaleItem = {
-  productName: '',
-  quantity: 1,
-  unit: Unit.HOP,
-  unitPrice: 0,
-  total: 0,
-};
-
-const mapSale = (s: any): SaleInvoice => ({
-  key: String(s.id),
+const mapSale = (s: any): SaleOrderRow => ({
   id: s.id,
-  invoiceCode: s.invoice_code,
-  customerName: s.customer_name,
-  customerPhone: s.customer_phone,
-  saleType: s.sale_type,
-  items: (s.items || []).map((item: any) => ({
-    productName: item.productName,
-    quantity: item.quantity,
-    unit: item.unit,
-    unitPrice: Number(item.unitPrice),
-    total: Number(item.total),
+  key: String(s.id),
+  invoice_code: s.invoice_code,
+  customer_name: s.customer_name || '',
+  customer_phone: s.customer_phone || '',
+  customer_address: s.customer_address || '',
+  sale_type: s.sale_type,
+  items: (s.items || []).map((i: any) => ({
+    id: i.id,
+    product_id: i.product_id,
+    product_name: i.product_name,
+    warehouse_id: i.warehouse_id,
+    warehouse_name: i.warehouse_name || '',
+    supplier: i.supplier,
+    batch: i.batch,
+    small_unit_id: i.small_unit_id,
+    small_unit_label: i.small_unit?.label || '',
+    available: 0,
+    quantity: Number(i.quantity) || 0,
+    unit_price: Number(i.unit_price) || 0,
+    total: Number(i.total) || 0,
   })),
-  totalAmount: Number(s.total_amount),
+  total_amount: Number(s.total_amount),
   paid: Boolean(s.paid),
-  saleDate: s.sale_date,
-  createdBy: s.created_by || '',
+  sale_date: s.sale_date,
 });
 
 const SalesPage = () => {
   const [filterForm] = Form.useForm();
   const [modalForm] = Form.useForm();
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filters, setFilters] = useState<any>({});
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingInvoice, setEditingInvoice] = useState<SaleInvoice | null>(null);
-  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
+  const [editing, setEditing] = useState<SaleOrderRow | null>(null);
+  const [lines, setLines] = useState<SaleLine[]>([]);
 
   const { data: salesRes, isLoading } = useGetSales(filters);
-  const createMutation = useCreateSale();
-  const updateMutation = useUpdateSale();
-  const deleteMutation = useDeleteSale();
-  const { data: productListRes } = useGetProductList();
+  const create = useCreateSale();
+  const update = useUpdateSale();
+  const remove = useDeleteSale();
+  const { data: inventoryRes } = useGetInventory();
+  const currentSaleType = Form.useWatch('saleType', modalForm);
 
-  const productOptions = (productListRes?.data || []).map((p: any) => ({
-    label: p.label,
-    value: p.value,
-    price: Number(p.price),
-  }));
+  const inventoryOptions = useMemo(() => {
+    return (inventoryRes?.data || []).map((it: any) => ({
+      label: `${it.product_name} — ${it.warehouse_name} | NCC: ${it.supplier} | Lô: ${it.batch} (Tồn: ${it.stock_pieces} ${it.small_unit?.label || ''})`,
+      value: it.id,
+      record: it,
+    }));
+  }, [inventoryRes?.data]);
 
-  const dataSource: SaleInvoice[] = (salesRes?.data || []).map(mapSale);
-  const loading = isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const data = (salesRes?.data || []).map(mapSale);
+  const loading = isLoading || create.isPending || update.isPending || remove.isPending;
 
-  const totalRevenue = useMemo(() => dataSource.reduce((sum, item) => sum + item.totalAmount, 0), [dataSource]);
+  const totalRevenue = useMemo(
+    () => data.reduce((s, x) => s + x.total_amount, 0), [data]);
   const totalDebt = useMemo(
-    () => dataSource.filter(item => !item.paid).reduce((sum, item) => sum + item.totalAmount, 0),
-    [dataSource]
-  );
+    () => data.filter(x => !x.paid).reduce((s, x) => s + x.total_amount, 0), [data]);
 
-  const handleSearch = (values: any) => {
-    const params: Record<string, any> = {};
-    if (values.keyword) params.keyword = values.keyword;
-    if (values.paid !== undefined && values.paid !== null) params.paid = String(values.paid);
-    if (values.saleDate) params.saleDate = toApiDate(values.saleDate);
-    setFilters(params);
-  };
+  const onSearch = (v: any) => setFilters({
+    keyword: v.keyword,
+    paid: v.paid !== undefined && v.paid !== null ? String(v.paid) : undefined,
+    saleDate: v.saleDate ? toApiDate(v.saleDate) : undefined,
+  });
 
-  const handleClearFilter = () => {
-    filterForm.resetFields();
-    setFilters({});
-  };
+  const onClear = () => { filterForm.resetFields(); setFilters({}); };
 
-  const openCreateModal = () => {
-    setEditingInvoice(null);
+  const openCreate = (saleType?: string) => {
+    setEditing(null);
     modalForm.resetFields();
-    setSaleItems([{ ...EMPTY_ITEM }]);
-    setModalOpen(true);
-  };
-
-  const openEditModal = (record: SaleInvoice) => {
-    setEditingInvoice(record);
     modalForm.setFieldsValue({
-      customerName: record.customerName,
-      customerPhone: record.customerPhone,
-      saleType: record.saleType,
-      paid: record.paid,
-      saleDate: dayjs(record.saleDate),
+      saleDate: dayjs(),
+      saleType: saleType || SaleType.RETAIL,
+      paid: false,
     });
-    setSaleItems([...record.items]);
+    setLines([]);
     setModalOpen(true);
   };
 
-  const handleAddItem = () => setSaleItems([...saleItems, { ...EMPTY_ITEM }]);
-
-  const handleRemoveItem = (index: number) => {
-    if (saleItems.length <= 1) return;
-    setSaleItems(saleItems.filter((_, i) => i !== index));
+  const openEdit = (r: SaleOrderRow) => {
+    setEditing(r);
+    modalForm.setFieldsValue({
+      customerName: r.customer_name,
+      customerPhone: r.customer_phone,
+      customerAddress: r.customer_address,
+      saleType: r.sale_type,
+      paid: r.paid,
+      saleDate: r.sale_date ? dayjs(r.sale_date) : undefined,
+    });
+    // Re-attach available from current inventory
+    const enriched = r.items.map(it => {
+      const inv = (inventoryRes?.data || []).find((x: any) =>
+        x.product_id === it.product_id && x.warehouse_id === it.warehouse_id
+        && x.supplier === it.supplier && x.batch === it.batch);
+      return {
+        ...it,
+        inventory_id: inv?.id,
+        available: inv?.stock_pieces || 0,
+      };
+    });
+    setLines(enriched);
+    setModalOpen(true);
   };
 
-  const handleItemChange = (index: number, field: keyof SaleItem, value: any) => {
-    const updated = [...saleItems];
-    updated[index] = { ...updated[index], [field]: value };
-    if (field === 'productName') {
-      const product = productOptions.find((p: any) => p.value === value);
-      if (product) {
-        updated[index].unitPrice = product.price;
-        updated[index].total = product.price * updated[index].quantity;
-      }
-    }
-    if (field === 'quantity' || field === 'unitPrice') {
-      updated[index].total = updated[index].quantity * updated[index].unitPrice;
-    }
-    setSaleItems(updated);
+  const closeModal = () => { setModalOpen(false); setEditing(null); modalForm.resetFields(); setLines([]); };
+
+  const addLine = () => setLines(prev => [...prev, {
+    product_id: 0, product_name: '', warehouse_id: 0, warehouse_name: '',
+    supplier: '', batch: '', small_unit_id: 0, small_unit_label: '',
+    available: 0, quantity: 0, unit_price: 0, total: 0,
+  }]);
+
+  const removeLine = (idx: number) => setLines(prev => prev.filter((_, i) => i !== idx));
+
+  const updateLine = (idx: number, patch: Partial<SaleLine>) => {
+    setLines(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...patch };
+      next[idx].total = next[idx].quantity * next[idx].unit_price;
+      return next;
+    });
   };
 
-  const getTotalAmount = () => saleItems.reduce((sum, item) => sum + item.total, 0);
+  const onPickInventory = (idx: number, inventoryId: number) => {
+    const opt = inventoryOptions.find(o => o.value === inventoryId);
+    if (!opt) return;
+    const r = opt.record;
+    updateLine(idx, {
+      inventory_id: r.id,
+      product_id: r.product_id,
+      product_name: r.product_name,
+      warehouse_id: r.warehouse_id,
+      warehouse_name: r.warehouse_name,
+      supplier: r.supplier,
+      batch: r.batch,
+      small_unit_id: r.small_unit?.id || 0,
+      small_unit_label: r.small_unit?.label || '',
+      available: r.stock_pieces,
+      unit_price: 0,
+      quantity: 0,
+      total: 0,
+    });
+  };
 
-  const handleModalSubmit = () => {
+  const onSubmit = () => {
     modalForm.validateFields().then(values => {
-      const validItems = saleItems.filter(item => item.productName && item.quantity > 0);
-      if (validItems.length === 0) return;
+      if (lines.length === 0) { message.warning('Phải có ít nhất 1 dòng'); return; }
+      for (const l of lines) {
+        if (!l.product_id) { message.warning('Chọn SP cho mọi dòng'); return; }
+        if (l.quantity <= 0) { message.warning(`Số lượng SP "${l.product_name}" phải > 0`); return; }
+        if (l.quantity > l.available) {
+          message.warning(`Tồn không đủ cho "${l.product_name}" (lô ${l.batch}): còn ${l.available}, cần ${l.quantity}`);
+          return;
+        }
+      }
 
       const payload = {
         customerName: values.customerName,
-        customerPhone: values.customerPhone,
+        customerPhone: values.customerPhone || '',
+        customerAddress: values.customerAddress || '',
         saleType: values.saleType,
-        items: validItems,
-        paid: values.paid,
+        paid: !!values.paid,
         saleDate: toApiDate(values.saleDate),
-        createdBy: values.customerName,
+        items: lines.map(l => ({
+          product_id: l.product_id,
+          product_name: l.product_name,
+          warehouse_id: l.warehouse_id,
+          supplier: l.supplier,
+          batch: l.batch,
+          small_unit_id: l.small_unit_id,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          total: l.quantity * l.unit_price,
+        })),
       };
 
-      if (editingInvoice) {
-        updateMutation.mutate({ id: editingInvoice.id, data: payload }, {
-          onSuccess: () => {
-            message.success('Cập nhật hóa đơn thành công');
-            setModalOpen(false);
-            modalForm.resetFields();
-            setSaleItems([]);
-          },
-          onError: () => message.error('Cập nhật hóa đơn thất bại'),
+      if (editing) {
+        update.mutate({ id: editing.id, data: payload }, {
+          onSuccess: () => { message.success('Cập nhật hóa đơn thành công'); closeModal(); },
+          onError: (e: any) => message.error(e?.response?.data?.message || 'Lỗi cập nhật'),
         });
       } else {
-        createMutation.mutate(payload, {
-          onSuccess: () => {
-            message.success('Thêm hóa đơn thành công');
-            setModalOpen(false);
-            modalForm.resetFields();
-            setSaleItems([]);
-          },
-          onError: () => message.error('Thêm hóa đơn thất bại'),
+        create.mutate(payload, {
+          onSuccess: () => { message.success('Tạo hóa đơn thành công'); closeModal(); },
+          onError: (e: any) => message.error(e?.response?.data?.message || 'Lỗi tạo hóa đơn'),
         });
       }
     });
   };
 
-  const handleDelete = (record: SaleInvoice) => {
-    deleteMutation.mutate(record.id, {
+  const onDelete = (r: SaleOrderRow) => {
+    remove.mutate(r.id, {
       onSuccess: () => message.success('Xóa hóa đơn thành công'),
-      onError: () => message.error('Xóa hóa đơn thất bại'),
+      onError: () => message.error('Không thể xóa hóa đơn'),
     });
   };
 
   const columns = [
     sttColumn,
+    { title: 'Mã HĐ', dataIndex: 'invoice_code', key: 'invoice_code',
+      render: (t: string) => <span className="font-bold">{t}</span> },
+    { title: 'Khách hàng', dataIndex: 'customer_name', key: 'customer_name' },
+    { title: 'SĐT', dataIndex: 'customer_phone', key: 'customer_phone' },
+    { title: 'Loại', dataIndex: 'sale_type', key: 'sale_type', align: 'center' as const,
+      render: (s: string) => {
+        const i = saleTypeLabels[s] || { label: s, color: 'default' };
+        return <Tag color={i.color}>{i.label}</Tag>;
+      } },
+    { title: 'Số dòng', key: 'line_count', align: 'center' as const,
+      render: (_: any, r: SaleOrderRow) => r.items.length },
+    { title: 'Tổng tiền', dataIndex: 'total_amount', key: 'total_amount', align: 'right' as const,
+      render: (v: number) => formatCurrency(v) },
+    { title: 'Thanh toán', dataIndex: 'paid', key: 'paid', align: 'center' as const,
+      render: (v: boolean) => v ? <Tag color="success">Đã trả</Tag> : <Tag color="error">Còn nợ</Tag> },
+    { title: 'Ngày bán', dataIndex: 'sale_date', key: 'sale_date', align: 'center' as const,
+      render: (d: string) => formatDate(d) },
     {
-      title: 'Mã hóa đơn',
-      dataIndex: 'invoiceCode',
-      key: 'invoiceCode',
-      render: (text: string) => <span className="font-bold">{text}</span>,
-    },
-    {
-      title: 'Khách hàng',
-      dataIndex: 'customerName',
-      key: 'customerName',
-      render: (text: string, record: SaleInvoice) => (
-        <div>
-          <div className="font-bold">{text}</div>
-          <div className="text-xs text-gray-500">{record.customerPhone}</div>
-        </div>
-      ),
-    },
-    {
-      title: 'Loại bán',
-      dataIndex: 'saleType',
-      key: 'saleType',
-      align: 'center' as const,
-      render: (type: string) => {
-        const info = saleTypeLabels[type] || { label: type, color: 'default' };
-        return <Tag color={info.color}>{info.label}</Tag>;
-      },
-    },
-    {
-      title: 'Số sản phẩm',
-      key: 'itemCount',
-      align: 'center' as const,
-      render: (_: any, record: SaleInvoice) => record.items.length,
-    },
-    {
-      title: 'Tổng tiền',
-      dataIndex: 'totalAmount',
-      key: 'totalAmount',
-      align: 'right' as const,
-      render: (val: number) => <span className="font-bold">{formatCurrency(val)}</span>,
-    },
-    {
-      title: 'Thanh toán',
-      dataIndex: 'paid',
-      key: 'paid',
-      align: 'center' as const,
-      render: (paid: boolean) => (
-        <Tag color={paid ? 'success' : 'error'}>{paid ? 'Đã thanh toán' : 'Chưa thanh toán'}</Tag>
-      ),
-    },
-    {
-      title: 'Ngày bán',
-      dataIndex: 'saleDate',
-      key: 'saleDate',
-      align: 'center' as const,
-      render: (date: string) => formatDate(date),
-    },
-    {
-      title: 'Hành động',
-      key: 'actions',
-      align: 'center' as const,
-      width: 150,
-      render: (_: any, record: SaleInvoice) => (
-        <ActionColumn
-          onEdit={() => openEditModal(record)}
-          onDelete={() => handleDelete(record)}
-          deleteTitle="Xóa hóa đơn"
-          deleteDescription={`Bạn có chắc muốn xóa hóa đơn "${record.invoiceCode}"?`}
-        />
+      title: 'Hành động', key: 'actions', align: 'center' as const, width: 150,
+      render: (_: any, r: SaleOrderRow) => (
+        <ActionColumn onEdit={() => openEdit(r)} onDelete={() => onDelete(r)}
+          deleteTitle="Xóa hóa đơn" deleteDescription={`Xóa hóa đơn "${r.invoice_code}"?`} />
       ),
     },
   ];
@@ -280,191 +282,155 @@ const SalesPage = () => {
   return (
     <div className="sales-page">
       <Row gutter={[16, 16]} className="mb-6">
-        <StatCard
-          title="Tổng thu nhập"
-          value={totalRevenue}
-          suffix="đ"
-          prefix={<FiDollarSign className="text-success mr-2" />}
-          bgColor="bg-green-50"
-          colSpan={12}
-        />
-        <StatCard
-          title="Dư nợ"
-          value={totalDebt}
-          suffix="đ"
-          prefix={<FiAlertCircle className="mr-2" />}
-          bgColor="bg-red-50"
-          valueStyle={{ color: '#cf1322' }}
-          colSpan={12}
-        />
+        <StatCard title="Tổng doanh thu" value={totalRevenue} suffix="đ"
+          prefix={<FiDollarSign className="mr-2" />} bgColor="bg-green-50" colSpan={12} />
+        <StatCard title="Dư nợ" value={totalDebt} suffix="đ"
+          prefix={<FiAlertCircle className="mr-2" />} bgColor="bg-red-50"
+          valueStyle={{ color: '#cf1322' }} colSpan={12} />
       </Row>
 
-      <FilterSection
-        form={filterForm}
-        onSearch={handleSearch}
-        onClear={handleClearFilter}
-        loading={loading}
-      >
-        <Form.Item name="keyword" label="Tìm kiếm khách hàng" className="flex-1 mb-0">
-          <AppInput placeholder="Nhập tên khách hàng..." prefix={<FiSearch />} />
+      <FilterSection form={filterForm} onSearch={onSearch} onClear={onClear} loading={loading}>
+        <Form.Item name="keyword" label="Tìm khách hàng" className="flex-1 mb-0">
+          <AppInput placeholder="Tên KH hoặc mã HĐ..." prefix={<FiSearch />} />
         </Form.Item>
-        <Form.Item name="paid" label="Trạng thái thanh toán" className="w-[220px] mb-0">
+        <Form.Item name="paid" label="Thanh toán" className="w-[200px] mb-0">
           <AppSelect allowClear placeholder="Chọn trạng thái" options={paidOptions} />
         </Form.Item>
-        <Form.Item name="saleDate" label="Ngày bán hàng" className="w-[200px] mb-0">
+        <Form.Item name="saleDate" label="Ngày bán" className="w-[180px] mb-0">
           <AppDatePicker placeholder="Chọn ngày" format={DATE_FORMAT.DISPLAY} className="w-full" />
         </Form.Item>
       </FilterSection>
 
+      <Row gutter={[16, 16]} className="mb-6">
+        <Col xs={24} sm={8}>
+          <AppButton type="primary" icon={<FiPackage />} size="large" className="w-full"
+            style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+            onClick={() => openCreate(SaleType.WHOLESALE)}>
+            Bán buôn
+          </AppButton>
+        </Col>
+        <Col xs={24} sm={8}>
+          <AppButton type="primary" icon={<FiShoppingCart />} size="large" className="w-full"
+            style={{ backgroundColor: '#13c2c2', borderColor: '#13c2c2' }}
+            onClick={() => openCreate(SaleType.RETAIL)}>
+            Bán lẻ
+          </AppButton>
+        </Col>
+        <Col xs={24} sm={8}>
+          <AppButton type="primary" icon={<FiUsers />} size="large" className="w-full"
+            style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+            onClick={() => openCreate(SaleType.BROKER)}>
+            Bán cho NCC trung gian
+          </AppButton>
+        </Col>
+      </Row>
+
       <TableSection
         totalLabel="Tổng số hóa đơn"
-        totalCount={dataSource.length}
-        addLabel="Thêm hóa đơn"
-        onAdd={openCreateModal}
+        totalCount={data.length}
         columns={columns}
-        dataSource={dataSource}
+        dataSource={data}
         loading={loading}
         scroll={{ x: 1200 }}
       />
 
       <CrudModal
         open={modalOpen}
-        title={editingInvoice ? 'Chỉnh sửa hóa đơn' : 'Thêm hóa đơn mới'}
-        onCancel={() => {
-          setModalOpen(false);
-          modalForm.resetFields();
-          setSaleItems([]);
-        }}
-        onSubmit={handleModalSubmit}
-        submitLabel={editingInvoice ? 'Cập nhật' : 'Thêm mới'}
-        width={800}
+        title={
+          editing
+            ? `Chỉnh sửa: ${editing.invoice_code}`
+            : `Tạo hóa đơn xuất hàng (${saleTypeLabels[currentSaleType || '']?.label || ''})`
+        }
+        onCancel={closeModal}
+        onSubmit={onSubmit}
+        submitLabel={editing ? 'Cập nhật' : 'Tạo hóa đơn'}
+        loading={create.isPending || update.isPending}
+        width={1100}
       >
         <Form form={modalForm} layout="vertical" className="pt-4" autoComplete="off">
           <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="customerName"
-                label="Tên khách hàng"
-                rules={[{ required: true, message: 'Vui lòng nhập tên khách hàng' }]}
-              >
-                <AppInput placeholder="Nhập tên khách hàng" />
+            <Col xs={24} sm={8}>
+              <Form.Item name="customerName" label="Tên khách hàng"
+                rules={[{ required: true }]}>
+                <AppInput placeholder="Tên KH" />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="customerPhone"
-                label="Số điện thoại"
-                rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}
-              >
-                <AppInput placeholder="Nhập số điện thoại" />
+            <Col xs={24} sm={8}>
+              <Form.Item name="customerPhone" label="SĐT">
+                <AppInput placeholder="SĐT" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="saleDate" label="Ngày bán"
+                rules={[{ required: true }]}>
+                <AppDatePicker format={DATE_FORMAT.DISPLAY} className="w-full" />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 0]}>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="saleType"
-                label="Loại bán"
-                rules={[{ required: true, message: 'Vui lòng chọn loại bán' }]}
-              >
-                <AppSelect placeholder="Chọn loại bán" options={saleTypeOptions} />
+            <Col xs={24} sm={16}>
+              <Form.Item name="customerAddress" label="Địa chỉ">
+                <AppInput placeholder="Địa chỉ" />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="saleDate"
-                label="Ngày bán hàng"
-                rules={[{ required: true, message: 'Vui lòng chọn ngày bán hàng' }]}
-              >
-                <AppDatePicker
-                  placeholder="Chọn ngày"
-                  format={DATE_FORMAT.DISPLAY}
-                  className="w-full"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="paid"
-                label="Trạng thái thanh toán"
-                rules={[{ required: true, message: 'Vui lòng chọn trạng thái thanh toán' }]}
-              >
-                <AppSelect placeholder="Chọn trạng thái" options={paidOptions} />
+            <Col xs={24} sm={8}>
+              <Form.Item name="paid" label="Thanh toán" rules={[{ required: true }]}>
+                <AppSelect options={paidOptions} />
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="saleType" hidden><AppInput /></Form.Item>
 
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="font-medium">Danh sách sản phẩm</span>
-              <AppButton type="primary" size="small" icon={<FiPlus />} onClick={handleAddItem}>
-                Thêm sản phẩm
-              </AppButton>
-            </div>
-
-            {saleItems.map((item, index) => (
-              <Row gutter={[12, 0]} key={index} className="mb-2 items-center">
-                <Col xs={24} sm={7}>
+          <div className="flex items-center justify-between pt-2 mt-2 mb-2 border-t">
+            <h4 className="m-0 text-base font-semibold">Danh sách dòng bán</h4>
+            <AppButton icon={<FiPlus />} onClick={addLine} type="default">Thêm dòng</AppButton>
+          </div>
+          {lines.length === 0 && (
+            <p className="text-sm text-center text-gray-400 py-4">Chưa có dòng nào — bấm "Thêm dòng" để chọn từ kho.</p>
+          )}
+          {lines.map((line, idx) => (
+            <Row gutter={[8, 0]} key={idx} className="items-end pb-2 mb-2 border-b">
+              <Col xs={24} md={10}>
+                <Form.Item label={idx === 0 ? 'Chọn từ tồn kho' : ''} className="mb-1">
                   <AppSelect
                     showSearch
-                    filterOption={(input, option) =>
-                      ((option?.label as string) ?? '').toLowerCase().includes(input.toLowerCase())
-                    }
-                    placeholder="Chọn sản phẩm"
-                    options={productOptions}
-                    value={item.productName || undefined}
-                    onChange={val => handleItemChange(index, 'productName', val)}
-                    className="w-full"
+                    placeholder="Chọn dòng tồn"
+                    value={line.inventory_id}
+                    options={inventoryOptions}
+                    filterOption={(i, o) => (o?.label as string ?? '').toLowerCase().includes(i.toLowerCase())}
+                    onChange={(v) => onPickInventory(idx, v)}
                   />
-                </Col>
-                <Col xs={24} sm={3}>
-                  <AppInputNumber
-                    placeholder="SL"
-                    decimalScale={0}
-                    value={item.quantity}
-                    onValueChange={val => handleItemChange(index, 'quantity', val.floatValue || 0)}
-                    className="w-full"
-                  />
-                </Col>
-                <Col xs={24} sm={3}>
-                  <AppSelect
-                    placeholder="Đơn vị"
-                    options={unitOptions}
-                    value={item.unit || undefined}
-                    onChange={val => handleItemChange(index, 'unit', val)}
-                    className="w-full"
-                  />
-                </Col>
-                <Col xs={24} sm={4}>
-                  <AppInputNumber
-                    placeholder="Đơn giá"
-                    decimalScale={0}
-                    value={item.unitPrice}
-                    onValueChange={val => handleItemChange(index, 'unitPrice', val.floatValue || 0)}
-                    className="w-full"
-                    suffix=" đ"
-                  />
-                </Col>
-                <Col xs={24} sm={4}>
-                  <AppInput value={formatCurrency(item.total)} disabled className="w-full" />
-                </Col>
-                <Col xs={24} sm={2}>
-                  {saleItems.length > 1 && (
-                    <AppButton
-                      type="text"
-                      color="red"
-                      icon={<FiTrash2 />}
-                      onClick={() => handleRemoveItem(index)}
-                    />
-                  )}
-                </Col>
-              </Row>
-            ))}
-
-            <div className="flex justify-end mt-3 text-lg font-bold">
-              Tổng cộng: {formatCurrency(getTotalAmount())}
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={3}>
+                <Form.Item label={idx === 0 ? `SL (max ${line.available})` : ''} className="mb-1">
+                  <AppInputNumber decimalScale={0} value={line.quantity} className="w-full"
+                    onValueChange={v => updateLine(idx, { quantity: v.floatValue || 0 })} />
+                </Form.Item>
+              </Col>
+              <Col xs={12} md={4}>
+                <Form.Item label={idx === 0 ? 'Đơn giá' : ''} className="mb-1">
+                  <AppInputNumber decimalScale={0} value={line.unit_price} className="w-full"
+                    onValueChange={v => updateLine(idx, { unit_price: v.floatValue || 0 })} />
+                </Form.Item>
+              </Col>
+              <Col xs={20} md={5}>
+                <Form.Item label={idx === 0 ? 'Thành tiền' : ''} className="mb-1">
+                  <div className="font-semibold">{formatCurrency(line.total)}</div>
+                </Form.Item>
+              </Col>
+              <Col xs={4} md={2}>
+                <Form.Item label={idx === 0 ? ' ' : ''} className="mb-1">
+                  <AppButton danger icon={<FiTrash2 />} onClick={() => removeLine(idx)} />
+                </Form.Item>
+              </Col>
+            </Row>
+          ))}
+          {lines.length > 0 && (
+            <div className="text-right text-lg font-bold">
+              Tổng: <span className="text-primary">{formatCurrency(lines.reduce((s, l) => s + l.total, 0))}</span>
             </div>
-          </div>
+          )}
         </Form>
       </CrudModal>
     </div>

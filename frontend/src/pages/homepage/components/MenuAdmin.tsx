@@ -14,6 +14,8 @@ import {
   FiPackage,
   FiHome,
   FiLogOut,
+  FiDownload,
+  FiTag,
 } from 'react-icons/fi';
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -44,39 +46,13 @@ const MenuAdmin = () => {
 
   const items: MenuProps['items'] = [
     getItem('Quản lý tồn kho', 'inventory', <FiBox />, undefined, undefined, ROUTE_PATH.INVENTORY),
-    getItem(
-      'Quản lý bán hàng',
-      'sales',
-      <FiShoppingCart />,
-      undefined,
-      undefined,
-      ROUTE_PATH.SALES
-    ),
-    getItem(
-      'Quản lý tài khoản',
-      'accounts',
-      <FiUsers />,
-      undefined,
-      undefined,
-      ROUTE_PATH.ACCOUNTS
-    ),
+    getItem('Quản lý nhập hàng', 'imports', <FiDownload />, undefined, undefined, ROUTE_PATH.IMPORTS),
+    getItem('Quản lý xuất hàng', 'sales', <FiShoppingCart />, undefined, undefined, ROUTE_PATH.SALES),
+    getItem('Quản lý tài khoản', 'accounts', <FiUsers />, undefined, undefined, ROUTE_PATH.ACCOUNTS),
     getItem('Quản lý tài nguyên', 'resources', <FiLayers />, [
-      getItem(
-        'Danh sách sản phẩm',
-        'products',
-        <FiPackage />,
-        undefined,
-        undefined,
-        ROUTE_PATH.PRODUCTS
-      ),
-      getItem(
-        'Danh sách kho',
-        'warehouses',
-        <FiHome />,
-        undefined,
-        undefined,
-        ROUTE_PATH.WAREHOUSES
-      ),
+      getItem('Danh sách sản phẩm', 'products', <FiPackage />, undefined, undefined, ROUTE_PATH.PRODUCTS),
+      getItem('Danh sách kho', 'warehouses', <FiHome />, undefined, undefined, ROUTE_PATH.WAREHOUSES),
+      getItem('Đơn vị lẻ', 'small-units', <FiTag />, undefined, undefined, ROUTE_PATH.SMALL_UNITS),
     ]),
     getItem('Đăng xuất', 'logout', <FiLogOut />, undefined, undefined),
   ];
@@ -87,10 +63,12 @@ const MenuAdmin = () => {
     // Auto-select and open based on current path
     const keyMap: { [key: string]: { key: string; parent?: string } } = {
       inventory: { key: 'inventory' },
+      imports: { key: 'imports' },
       sales: { key: 'sales' },
       accounts: { key: 'accounts' },
       products: { key: 'products', parent: 'resources' },
       warehouses: { key: 'warehouses', parent: 'resources' },
+      'small-units': { key: 'small-units', parent: 'resources' },
       'my-profile': { key: 'my-profile' },
     };
 

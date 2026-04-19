@@ -6,17 +6,25 @@ export enum Status {
 export enum SaleType {
   WHOLESALE = 'wholesale',
   RETAIL = 'retail',
+  BROKER = 'broker',
 }
 
 export enum Unit {
-  KIEN = 'kiện',
-  THUNG = 'thùng',
-  HOP = 'hộp',
+  KIEN = 'kien',
+  THUNG = 'thung',
+  HOP = 'hop',
+}
+
+export enum SmallUnit {
+  HOP = 'hop',
+  LO = 'lo',
+  GOI = 'goi',
+  TUI = 'tui',
 }
 
 export enum ProductCategory {
-  GIAM_DAU = 'Thuốc giảm đau',
-  KHANG_SINH = 'Kháng sinh',
-  VITAMIN = 'Vitamin',
-  TIEU_HOA = 'Thuốc tiêu hóa',
+  GIAM_DAU = 'giam_dau',
+  KHANG_SINH = 'khang_sinh',
+  VITAMIN = 'vitamin',
+  TIEU_HOA = 'tieu_hoa',
 }

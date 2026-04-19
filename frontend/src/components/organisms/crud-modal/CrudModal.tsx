@@ -8,6 +8,7 @@ interface CrudModalProps {
   onCancel: () => void;
   onSubmit: () => void;
   submitLabel?: string;
+  loading?: boolean;
   width?: number;
   children: ReactNode;
 }
@@ -18,6 +19,7 @@ export const CrudModal = ({
   onCancel,
   onSubmit,
   submitLabel = 'Thêm mới',
+  loading = false,
   width = 600,
   children,
 }: CrudModalProps) => {
@@ -29,10 +31,10 @@ export const CrudModal = ({
       width={width}
       footer={
         <div className="flex justify-end gap-3 pt-2">
-          <AppButton type="default" onClick={onCancel}>
+          <AppButton type="default" onClick={onCancel} disabled={loading}>
             Hủy
           </AppButton>
-          <AppButton type="primary" onClick={onSubmit}>
+          <AppButton type="primary" onClick={onSubmit} loading={loading}>
             {submitLabel}
           </AppButton>
         </div>

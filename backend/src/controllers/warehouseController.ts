@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
-import { Op, fn, col, literal } from 'sequelize';
-import { Warehouse, Product } from '../models';
+import { Op, literal } from 'sequelize';
+import { Warehouse } from '../models';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
+
+const productCountSql = literal(
+  '(SELECT COUNT(DISTINCT product_id) FROM inventory_balance WHERE warehouse_id = `Warehouse`.`id` AND stock_pieces > 0)',
+);
 
 export class WarehouseController {
   getWarehouses = async (req: Request, res: Response): Promise<void> => {
@@ -18,18 +22,13 @@ export class WarehouseController {
 
     const warehouses = await Warehouse.findAll({
       where,
-      attributes: {
-        include: [
-          [literal('(SELECT COUNT(*) FROM products WHERE products.warehouse_id = `Warehouse`.`id`)'), 'productCount'],
-          [literal('(SELECT COALESCE(SUM(quantity * unit_price), 0) FROM products WHERE products.warehouse_id = `Warehouse`.`id`)'), 'inventoryValue'],
-        ],
-      },
+      attributes: { include: [[productCountSql, 'productCount']] },
       order: [['created_at', 'DESC']],
     });
 
     sendSuccess(res, warehouses.map(w => {
       const json = w.toJSON() as any;
-      return { ...json, key: String(w.id), productCount: Number(json.productCount), inventoryValue: Number(json.inventoryValue) };
+      return { ...json, key: String(w.id), productCount: Number(json.productCount) };
     }));
   };
 
@@ -38,7 +37,7 @@ export class WarehouseController {
     if (!name) { sendError(res, ErrorCode.REQUIRED, 'Warehouse name is required', 400); return; }
 
     const warehouse = await Warehouse.create({ name, address, manager, status: status || 'active' });
-    sendSuccess(res, { ...warehouse.toJSON(), key: String(warehouse.id), productCount: 0, inventoryValue: 0 }, 'Warehouse created successfully', 201);
+    sendSuccess(res, { ...warehouse.toJSON(), key: String(warehouse.id), productCount: 0 }, 'Warehouse created successfully', 201);
   };
 
   updateWarehouse = async (req: Request, res: Response): Promise<void> => {
@@ -53,15 +52,10 @@ export class WarehouseController {
     // Refetch with computed stats
     const [warehouse] = await Warehouse.findAll({
       where: { id: req.params.id },
-      attributes: {
-        include: [
-          [literal('(SELECT COUNT(*) FROM products WHERE products.warehouse_id = `Warehouse`.`id`)'), 'productCount'],
-          [literal('(SELECT COALESCE(SUM(quantity * unit_price), 0) FROM products WHERE products.warehouse_id = `Warehouse`.`id`)'), 'inventoryValue'],
-        ],
-      },
+      attributes: { include: [[productCountSql, 'productCount']] },
     });
     const json = warehouse.toJSON() as any;
-    sendSuccess(res, { ...json, key: String(warehouse.id), productCount: Number(json.productCount), inventoryValue: Number(json.inventoryValue) }, 'Warehouse updated successfully');
+    sendSuccess(res, { ...json, key: String(warehouse.id), productCount: Number(json.productCount) }, 'Warehouse updated successfully');
   };
 
   deleteWarehouse = async (req: Request, res: Response): Promise<void> => {

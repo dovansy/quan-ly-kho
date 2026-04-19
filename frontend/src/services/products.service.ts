@@ -1,62 +1,31 @@
 import httpClient from './httpClient';
 import { APIResponse } from '@/types/api.type';
 
-export interface UnitEntry {
-  unit: string;
-  quantity: number;
-  conversionRate: number;
-}
-
 export interface Product {
+  id: number;
   key: string;
-  id: number;
   name: string;
-  category: string;
-  warehouse_name: string;
-  supplier: string;
-  batch: string;
-  quantity: number;
-  min_stock: number;
-  unit_price: number;
-  unit: string;
-  expiry_date: string;
-  imported_by: string;
-  unitEntries: UnitEntry[];
-  created_at: string;
-  updated_at: string;
+  category: string | null;
+  supplier: string | null;
+  default_small_unit_id: number;
+  default_small_unit: { id: number; code: string; label: string } | null;
+  status: 'active' | 'inactive';
+  created_at?: string;
+  updated_at?: string;
 }
 
-export interface CreateProductRequest {
-  name: string;
-  category: string;
-  warehouse: string;
-  batch: string;
-  unitEntries: UnitEntry[];
-  unitPrice: number;
-  importedBy: string;
-  supplier?: string;
-  unit?: string;
-  minStock?: number;
-}
-
-export interface ProductOptions {
-  categories: { label: string; value: string }[];
-  warehouses: { label: string; value: string }[];
-  suppliers: { label: string; value: string }[];
-  batches: { label: string; value: string }[];
-}
-
-export interface ProductListItem {
-  label: string;
-  value: string;
-  price: number;
-  id: number;
+export interface UpdateProductRequest {
+  category?: string | null;
+  supplier?: string | null;
+  default_small_unit_id?: number;
+  status?: string;
 }
 
 export interface ProductFilters {
   keyword?: string;
   category?: string;
-  warehouse?: string;
+  supplier?: string;
+  status?: string;
   page?: number;
   limit?: number;
 }
@@ -65,21 +34,9 @@ export const productsService = {
   getAll: (params?: ProductFilters) =>
     httpClient.get<APIResponse<Product[]>>('/products', { params }),
 
-  create: (data: CreateProductRequest) =>
-    httpClient.post<APIResponse<Product>>('/products', data),
+  update: (id: number, data: UpdateProductRequest) =>
+    httpClient.put<APIResponse<Product>>(`/products/${id}`, data),
 
-  update: (id: number, data: Partial<CreateProductRequest>, addStock = false) =>
-    httpClient.put<APIResponse<Product>>(`/products/${id}${addStock ? '?addStock=true' : ''}`, data),
-
-  delete: (id: number) =>
-    httpClient.delete<APIResponse<null>>(`/products/${id}`),
-
-  getOptions: () =>
-    httpClient.get<APIResponse<ProductOptions>>('/products/options'),
-
-  getBatches: (params?: { name?: string; warehouse?: string }) =>
-    httpClient.get<APIResponse<{ label: string; value: string }[]>>('/products/batches', { params }),
-
-  getList: () =>
-    httpClient.get<APIResponse<ProductListItem[]>>('/products/list'),
+  getCategories: () =>
+    httpClient.get<APIResponse<{ label: string; value: string }[]>>('/products/categories'),
 };

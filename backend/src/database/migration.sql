@@ -1,147 +1,335 @@
--- Quan Ly Kho - Database Schema
+-- Quan Ly Kho - Database Schema v2
 -- Run this script to initialize the database
+-- Destructive: drops existing tables. Use `npm run seed` to run.
 
-CREATE DATABASE IF NOT EXISTS quan_ly_kho;
+CREATE DATABASE IF NOT EXISTS quan_ly_kho
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE quan_ly_kho;
 
--- Users table
-CREATE TABLE IF NOT EXISTS users (
+-- Drop trigger trước
+DROP TRIGGER IF EXISTS trg_si_after_insert;
+DROP TRIGGER IF EXISTS trg_si_after_update;
+DROP TRIGGER IF EXISTS trg_si_after_delete;
+DROP TRIGGER IF EXISTS trg_se_after_insert;
+DROP TRIGGER IF EXISTS trg_se_after_update;
+DROP TRIGGER IF EXISTS trg_se_after_delete;
+
+-- Drop in reverse dependency order
+DROP TABLE IF EXISTS stock_exports;
+DROP TABLE IF EXISTS stock_imports;
+DROP TABLE IF EXISTS inventory_balance;
+DROP TABLE IF EXISTS sale_orders;
+DROP TABLE IF EXISTS sale_items;
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS product_unit_entries;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS small_units;
+DROP TABLE IF EXISTS warehouses;
+DROP TABLE IF EXISTS user_roles;
+DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS users;
+
+-- ────────────────────────────────────────────────
+-- Auth tables
+-- ────────────────────────────────────────────────
+CREATE TABLE users (
   id INT NOT NULL AUTO_INCREMENT,
   full_name VARCHAR(255) DEFAULT NULL,
   username VARCHAR(100) NOT NULL,
   email VARCHAR(255) DEFAULT NULL,
   phone VARCHAR(20) DEFAULT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  status ENUM('active', 'inactive') DEFAULT 'active',
+  status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY username (username),
-  UNIQUE KEY email (email)
+  UNIQUE KEY uq_users_username (username),
+  UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Roles table
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE roles (
   id INT NOT NULL AUTO_INCREMENT,
   role VARCHAR(50) NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY role (role)
+  UNIQUE KEY uq_roles_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- User-Roles junction table
-CREATE TABLE IF NOT EXISTS user_roles (
+CREATE TABLE user_roles (
   user_id INT NOT NULL,
   role_id INT NOT NULL,
   PRIMARY KEY (user_id, role_id),
-  KEY role_id (role_id),
-  CONSTRAINT user_roles_ibfk_1 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT user_roles_ibfk_2 FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY idx_user_roles_role_id (role_id),
+  CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Warehouses table
-CREATE TABLE IF NOT EXISTS warehouses (
+-- ────────────────────────────────────────────────
+-- Warehouse
+-- ────────────────────────────────────────────────
+CREATE TABLE warehouses (
   id INT NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   address VARCHAR(500) DEFAULT NULL,
   manager VARCHAR(255) DEFAULT NULL,
-  status ENUM('active', 'inactive') DEFAULT 'active',
+  status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Products table
-CREATE TABLE IF NOT EXISTS products (
+-- ────────────────────────────────────────────────
+-- Lookup: small_units
+-- ────────────────────────────────────────────────
+CREATE TABLE small_units (
   id INT NOT NULL AUTO_INCREMENT,
-  name VARCHAR(255) NOT NULL,
-  category VARCHAR(100) DEFAULT NULL,
-  warehouse_id INT DEFAULT NULL,
-  warehouse_name VARCHAR(255) DEFAULT NULL,
-  supplier VARCHAR(255) DEFAULT NULL,
-  batch VARCHAR(100) DEFAULT NULL,
-  quantity INT DEFAULT 0,
-  min_stock INT DEFAULT 0,
-  unit_price DECIMAL(15, 2) DEFAULT 0.00,
-  unit VARCHAR(50) DEFAULT NULL,
-  expiry_date DATE DEFAULT NULL,
-  imported_by VARCHAR(255) DEFAULT NULL,
+  code VARCHAR(50) NOT NULL,
+  label VARCHAR(100) NOT NULL,
+  status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  KEY warehouse_id (warehouse_id),
-  CONSTRAINT products_ibfk_1 FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE KEY uq_small_units_code (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Product unit entries (for multi-unit conversion)
-CREATE TABLE IF NOT EXISTS product_unit_entries (
+-- ────────────────────────────────────────────────
+-- Catalog: products (auto-created on import)
+-- ────────────────────────────────────────────────
+CREATE TABLE products (
+  id INT NOT NULL AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) DEFAULT NULL,
+  supplier VARCHAR(255) DEFAULT NULL,
+  default_small_unit_id INT NOT NULL,
+  status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_products_name (name),
+  KEY idx_products_category (category),
+  KEY idx_products_supplier (supplier),
+  CONSTRAINT fk_products_small_unit FOREIGN KEY (default_small_unit_id)
+    REFERENCES small_units(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ────────────────────────────────────────────────
+-- NHẬP: stock_imports (lịch sử nhập, mỗi lần 1 row)
+-- ────────────────────────────────────────────────
+CREATE TABLE stock_imports (
   id INT NOT NULL AUTO_INCREMENT,
   product_id INT NOT NULL,
-  unit VARCHAR(50) NOT NULL,
-  quantity INT DEFAULT 0,
-  conversion_rate INT DEFAULT 1,
+  warehouse_id INT NOT NULL,
+  supplier VARCHAR(255) NOT NULL,
+  batch VARCHAR(100) NOT NULL,
+  small_unit_id INT NOT NULL,
+  carton_quantity INT NOT NULL DEFAULT 0,
+  units_per_carton INT NOT NULL DEFAULT 1,
+  piece_quantity INT NOT NULL DEFAULT 0,
+  expiry_date DATE NOT NULL,
+  imported_by_user_id INT DEFAULT NULL,
+  import_date DATE NOT NULL,
+  note VARCHAR(500) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  KEY product_id (product_id),
-  CONSTRAINT product_unit_entries_ibfk_1 FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY idx_si_group (product_id, warehouse_id, supplier, batch),
+  KEY idx_si_warehouse (warehouse_id),
+  KEY idx_si_import_date (import_date),
+  CONSTRAINT fk_si_product    FOREIGN KEY (product_id)          REFERENCES products(id)    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_si_warehouse  FOREIGN KEY (warehouse_id)        REFERENCES warehouses(id)  ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_si_small_unit FOREIGN KEY (small_unit_id)       REFERENCES small_units(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_si_user       FOREIGN KEY (imported_by_user_id) REFERENCES users(id)       ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Sales table
-CREATE TABLE IF NOT EXISTS sales (
+-- ────────────────────────────────────────────────
+-- HÓA ĐƠN XUẤT: sale_orders (header)
+-- ────────────────────────────────────────────────
+CREATE TABLE sale_orders (
   id INT NOT NULL AUTO_INCREMENT,
   invoice_code VARCHAR(100) NOT NULL,
   customer_name VARCHAR(255) DEFAULT NULL,
   customer_phone VARCHAR(20) DEFAULT NULL,
-  sale_type ENUM('wholesale', 'retail') NOT NULL,
-  total_amount DECIMAL(15, 2) DEFAULT 0.00,
-  paid TINYINT(1) DEFAULT 0,
+  customer_address VARCHAR(500) DEFAULT NULL,
+  sale_type ENUM('wholesale', 'retail', 'broker') NOT NULL,
+  total_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  paid TINYINT(1) NOT NULL DEFAULT 0,
   sale_date DATE NOT NULL,
-  created_by VARCHAR(255) DEFAULT NULL,
+  created_by_user_id INT DEFAULT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY invoice_code (invoice_code)
+  UNIQUE KEY uq_so_invoice_code (invoice_code),
+  KEY idx_so_sale_date (sale_date),
+  CONSTRAINT fk_so_user FOREIGN KEY (created_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Sale items table
-CREATE TABLE IF NOT EXISTS sale_items (
+-- ────────────────────────────────────────────────
+-- DÒNG XUẤT: stock_exports
+-- ────────────────────────────────────────────────
+CREATE TABLE stock_exports (
   id INT NOT NULL AUTO_INCREMENT,
-  sale_id INT NOT NULL,
-  product_name VARCHAR(255) NOT NULL,
+  sale_order_id INT NOT NULL,
+  product_id INT NOT NULL,
+  warehouse_id INT NOT NULL,
+  supplier VARCHAR(255) NOT NULL,
+  batch VARCHAR(100) NOT NULL,
+  small_unit_id INT NOT NULL,
   quantity INT NOT NULL DEFAULT 0,
-  unit VARCHAR(50) DEFAULT NULL,
-  unit_price DECIMAL(15, 2) DEFAULT 0.00,
-  total DECIMAL(15, 2) DEFAULT 0.00,
+  unit_price DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  total DECIMAL(15, 2) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  KEY sale_id (sale_id),
-  CONSTRAINT sale_items_ibfk_1 FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY idx_se_sale_order (sale_order_id),
+  KEY idx_se_group (product_id, warehouse_id, supplier, batch),
+  CONSTRAINT fk_se_order      FOREIGN KEY (sale_order_id) REFERENCES sale_orders(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_se_product    FOREIGN KEY (product_id)    REFERENCES products(id)    ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_se_warehouse  FOREIGN KEY (warehouse_id)  REFERENCES warehouses(id)  ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_se_small_unit FOREIGN KEY (small_unit_id) REFERENCES small_units(id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Insert default roles
-INSERT IGNORE INTO roles (role) VALUES ('super_admin'), ('admin');
+-- ────────────────────────────────────────────────
+-- TỒN: inventory_balance (vật lý, maintained bởi trigger)
+-- ────────────────────────────────────────────────
+CREATE TABLE inventory_balance (
+  id INT NOT NULL AUTO_INCREMENT,
+  product_id INT NOT NULL,
+  warehouse_id INT NOT NULL,
+  supplier VARCHAR(255) NOT NULL,
+  batch VARCHAR(100) NOT NULL,
+  stock_pieces INT NOT NULL DEFAULT 0,
+  nearest_expiry DATE DEFAULT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_ib_group (product_id, warehouse_id, supplier, batch),
+  KEY idx_ib_stock (stock_pieces),
+  CONSTRAINT fk_ib_product   FOREIGN KEY (product_id)   REFERENCES products(id)   ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_ib_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT chk_ib_stock_nonneg CHECK (stock_pieces >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Insert default super admin user (password: admin123)
-INSERT IGNORE INTO users (full_name, username, email, phone, password_hash, status, created_at, updated_at)
-VALUES ('Super Admin', 'admin', 'admin@quanlykho.com', '0901234567', '$2b$10$sWXhXWCcmjyFh6EoJQQDxuoJ4WUa/QH3IDzoJHaF262FKP3/QTzrq', 'active', NOW(), NOW());
+-- ────────────────────────────────────────────────
+-- TRIGGERS: duy trì inventory_balance
+-- ────────────────────────────────────────────────
+DELIMITER $$
 
--- Assign super_admin role to the default user
-INSERT IGNORE INTO user_roles (user_id, role_id)
-SELECT u.id, r.id FROM users u, roles r WHERE u.username = 'admin' AND r.role = 'super_admin';
+-- INSERT lần nhập → cộng vào balance
+CREATE TRIGGER trg_si_after_insert
+AFTER INSERT ON stock_imports FOR EACH ROW
+BEGIN
+  INSERT INTO inventory_balance
+    (product_id, warehouse_id, supplier, batch, stock_pieces, nearest_expiry, updated_at)
+  VALUES
+    (NEW.product_id, NEW.warehouse_id, NEW.supplier, NEW.batch,
+     NEW.carton_quantity * NEW.units_per_carton + NEW.piece_quantity,
+     NEW.expiry_date, NOW())
+  ON DUPLICATE KEY UPDATE
+    stock_pieces   = stock_pieces + VALUES(stock_pieces),
+    nearest_expiry = LEAST(IFNULL(nearest_expiry, VALUES(nearest_expiry)), VALUES(nearest_expiry)),
+    updated_at     = NOW();
+END$$
 
--- Insert sample warehouses
-INSERT IGNORE INTO warehouses (id, name, address, manager, status, created_at, updated_at) VALUES
-(1, 'Kho Chẵn', '123 Cầu Giấy, Hà Nội', 'Nguyễn Văn A', 'active', NOW(), NOW()),
-(2, 'Kho Lẻ', '456 Nguyễn Huệ, Quận 1, TP.HCM', 'Trần Thị B', 'active', NOW(), NOW()),
-(3, 'Kho Thuốc BHYT', '789 Nguyễn Văn Linh, Đà Nẵng', 'Lê Văn C', 'active', NOW(), NOW());
+-- UPDATE lần nhập → điều chỉnh delta
+CREATE TRIGGER trg_si_after_update
+AFTER UPDATE ON stock_imports FOR EACH ROW
+BEGIN
+  DECLARE old_total INT;
+  DECLARE new_total INT;
+  SET old_total = OLD.carton_quantity * OLD.units_per_carton + OLD.piece_quantity;
+  SET new_total = NEW.carton_quantity * NEW.units_per_carton + NEW.piece_quantity;
 
--- Insert sample products
-INSERT IGNORE INTO products (id, name, category, warehouse_id, warehouse_name, supplier, batch, quantity, min_stock, unit_price, unit, expiry_date, imported_by, created_at, updated_at) VALUES
-(1, 'Paracetamol 500mg', 'Thuốc giảm đau', 1, 'Kho Chẵn', 'Dược Hậu Giang', 'BATCH001', 5000, 1000, 1500, 'Viên', '2027-03-15', 'Nguyễn Văn A', NOW(), NOW()),
-(2, 'Amoxicillin 250mg', 'Kháng sinh', 2, 'Kho Lẻ', 'Traphaco', 'BATCH002', 120, 200, 2500, 'Gói', '2024-04-10', 'Trần Thị B', NOW(), NOW()),
-(3, 'Vitamin C 1000mg', 'Vitamin', 1, 'Kho Chẵn', 'Imexpharm', 'BATCH003', 3000, 500, 800, 'Viên', '2026-12-01', 'Nguyễn Văn A', NOW(), NOW()),
-(4, 'Omeprazol 20mg', 'Thuốc tiêu hóa', 2, 'Kho Lẻ', 'Dược Hậu Giang', 'BATCH004', 800, 100, 3200, 'Viên', '2026-06-30', 'Lê Văn C', NOW(), NOW());
+  IF NEW.product_id   <> OLD.product_id
+  OR NEW.warehouse_id <> OLD.warehouse_id
+  OR NEW.supplier     <> OLD.supplier
+  OR NEW.batch        <> OLD.batch THEN
+    -- Trừ khỏi row cũ
+    UPDATE inventory_balance SET stock_pieces = stock_pieces - old_total, updated_at = NOW()
+    WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+      AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+    -- Cộng vào row mới (UPSERT)
+    INSERT INTO inventory_balance
+      (product_id, warehouse_id, supplier, batch, stock_pieces, nearest_expiry, updated_at)
+    VALUES
+      (NEW.product_id, NEW.warehouse_id, NEW.supplier, NEW.batch, new_total, NEW.expiry_date, NOW())
+    ON DUPLICATE KEY UPDATE
+      stock_pieces = stock_pieces + VALUES(stock_pieces),
+      updated_at   = NOW();
+    -- Recompute nearest_expiry cho row cũ
+    UPDATE inventory_balance
+    SET nearest_expiry = (SELECT MIN(expiry_date) FROM stock_imports
+                          WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+                            AND supplier     = OLD.supplier     AND batch        = OLD.batch)
+    WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+      AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+  ELSE
+    UPDATE inventory_balance
+    SET stock_pieces = stock_pieces + (new_total - old_total), updated_at = NOW()
+    WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+      AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+  END IF;
 
--- Insert sample unit entries
-INSERT IGNORE INTO product_unit_entries (product_id, unit, quantity, conversion_rate) VALUES
-(1, 'kiện', 1000, 5),
-(2, 'hộp', 120, 1),
-(3, 'kiện', 300, 10),
-(4, 'kiện', 100, 8);
+  -- Recompute nearest_expiry cho row mới
+  UPDATE inventory_balance
+  SET nearest_expiry = (SELECT MIN(expiry_date) FROM stock_imports
+                        WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+                          AND supplier     = NEW.supplier     AND batch        = NEW.batch)
+  WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+    AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+END$$
+
+-- DELETE lần nhập → trừ
+CREATE TRIGGER trg_si_after_delete
+AFTER DELETE ON stock_imports FOR EACH ROW
+BEGIN
+  UPDATE inventory_balance
+  SET stock_pieces   = stock_pieces - (OLD.carton_quantity * OLD.units_per_carton + OLD.piece_quantity),
+      nearest_expiry = (SELECT MIN(expiry_date) FROM stock_imports
+                        WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+                          AND supplier     = OLD.supplier     AND batch        = OLD.batch),
+      updated_at     = NOW()
+  WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+    AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+END$$
+
+-- INSERT dòng xuất → trừ
+CREATE TRIGGER trg_se_after_insert
+AFTER INSERT ON stock_exports FOR EACH ROW
+BEGIN
+  UPDATE inventory_balance
+  SET stock_pieces = stock_pieces - NEW.quantity, updated_at = NOW()
+  WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+    AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+END$$
+
+-- UPDATE dòng xuất → điều chỉnh delta
+CREATE TRIGGER trg_se_after_update
+AFTER UPDATE ON stock_exports FOR EACH ROW
+BEGIN
+  IF NEW.product_id   <> OLD.product_id
+  OR NEW.warehouse_id <> OLD.warehouse_id
+  OR NEW.supplier     <> OLD.supplier
+  OR NEW.batch        <> OLD.batch THEN
+    -- Trả lại số cũ
+    UPDATE inventory_balance SET stock_pieces = stock_pieces + OLD.quantity, updated_at = NOW()
+    WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+      AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+    -- Trừ ở key mới
+    UPDATE inventory_balance SET stock_pieces = stock_pieces - NEW.quantity, updated_at = NOW()
+    WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+      AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+  ELSE
+    UPDATE inventory_balance
+    SET stock_pieces = stock_pieces - (NEW.quantity - OLD.quantity), updated_at = NOW()
+    WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+      AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+  END IF;
+END$$
+
+-- DELETE dòng xuất → cộng trả
+CREATE TRIGGER trg_se_after_delete
+AFTER DELETE ON stock_exports FOR EACH ROW
+BEGIN
+  UPDATE inventory_balance
+  SET stock_pieces = stock_pieces + OLD.quantity, updated_at = NOW()
+  WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+    AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+END$$
+
+DELIMITER ;

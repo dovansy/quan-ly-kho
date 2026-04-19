@@ -1,4 +1,4 @@
-import { Select, SelectProps } from 'antd';
+import { Select, SelectProps, RefSelectProps } from 'antd';
 import clsx from 'clsx';
 import { forwardRef } from 'react';
 import styles from './styles/AppSelect.module.scss';
@@ -6,16 +6,13 @@ import './styles/AppSelect.scss';
 
 export interface AppSelectProps extends SelectProps {}
 
-export const AppSelect = forwardRef<HTMLSelectElement, AppSelectProps>(
-  (
-    { placeholder = 'Select', size = 'middle', status = '', className, ...props }: AppSelectProps,
-    ref
-  ) => {
+export const AppSelect = forwardRef<RefSelectProps, AppSelectProps>(
+  ({ placeholder = 'Select', size = 'middle', status = '', className, ...props }, ref) => {
     const classNames = clsx(className, styles.appSelect, styles[size]);
 
     return (
       <Select
-        ref={() => ref}
+        ref={ref}
         placeholder={placeholder}
         size={size}
         status={status}
@@ -23,7 +20,7 @@ export const AppSelect = forwardRef<HTMLSelectElement, AppSelectProps>(
         {...props}
       />
     );
-  }
+  },
 );
 
 AppSelect.displayName = 'AppSelect';

@@ -8,9 +8,9 @@ import { statusOptions, statusLabels } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import { useGetWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/hooks/api/warehouses';
 import { sttColumn } from '@/utils/tableColumns';
-import { formatCurrency, formatNumber } from '@/utils/format';
+import { formatNumber } from '@/utils/format';
 import { Col, Form, Row, Tag, message } from 'antd';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
 interface Warehouse {
@@ -20,7 +20,6 @@ interface Warehouse {
   address: string;
   manager: string;
   productCount: number;
-  inventoryValue: number;
   status: string;
 }
 
@@ -40,15 +39,9 @@ const WarehousesPage = () => {
     ...w,
     key: String(w.id),
     productCount: Number(w.productCount) || 0,
-    inventoryValue: Number(w.inventoryValue) || 0,
   }));
 
   const loading = isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-
-  const totalInventoryValue = useMemo(
-    () => filteredData.reduce((sum, item) => sum + (item.inventoryValue || 0), 0),
-    [filteredData]
-  );
 
   const onSearch = (values: any) => {
     setFilters({ keyword: values.keyword, status: values.status });
@@ -120,13 +113,6 @@ const WarehousesPage = () => {
       render: (value: number) => formatNumber(value),
     },
     {
-      title: 'Giá trị tồn kho',
-      dataIndex: 'inventoryValue',
-      key: 'inventoryValue',
-      align: 'right' as const,
-      render: (value: number) => formatCurrency(value),
-    },
-    {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
@@ -171,12 +157,6 @@ const WarehousesPage = () => {
       <TableSection
         totalLabel="Tổng số kho"
         totalCount={filteredData.length}
-        extraInfo={
-          <div className="text-lg font-medium">
-            Giá trị tồn kho:{' '}
-            <span className="text-primary">{formatCurrency(totalInventoryValue)}</span>
-          </div>
-        }
         addLabel="Thêm kho"
         onAdd={() => openCreateModal({ status: Status.ACTIVE })}
         columns={columns}
@@ -190,6 +170,7 @@ const WarehousesPage = () => {
         onCancel={closeModal}
         onSubmit={onSubmit}
         submitLabel={editingRecord ? 'Cập nhật' : 'Thêm mới'}
+        loading={createMutation.isPending || updateMutation.isPending}
       >
         <Form form={modalForm} layout="vertical" className="pt-4" autoComplete="off">
           <Row gutter={[16, 0]}>

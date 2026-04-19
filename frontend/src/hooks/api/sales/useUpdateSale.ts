@@ -10,6 +10,7 @@ export function useUpdateSale() {
       salesService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: SALE_QUERY_KEY.all });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }

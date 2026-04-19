@@ -2,53 +2,37 @@ import { AppButton } from '@/components/atoms/AppButton';
 import { AppInput } from '@/components/atoms/AppInput';
 import { AppSelect } from '@/components/atoms/AppSelect';
 import { AppTable } from '@/components/atoms/AppTable/AppTable';
-import { StatCard } from '@/components/molecules/stat-card';
-import { useGetInventory, useGetInventoryStats, useGetInventoryFilters } from '@/hooks/api/inventory';
+import { useGetInventory, useGetInventoryFilters } from '@/hooks/api/inventory';
 import useDebounce from '@/hooks/useDebounce';
 import { sttColumn } from '@/utils/tableColumns';
-import { formatCurrency, formatDate } from '@/utils/format';
+import { formatDate, formatNumber } from '@/utils/format';
 import { exportToExcel } from '@/utils/exportExcel';
 import { Col, Form, Row, Space, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
-import {
-  FiAlertCircle,
-  FiBox,
-  FiDollarSign,
-  FiDownload,
-  FiRotateCcw,
-  FiSearch,
-} from 'react-icons/fi';
+import { FiDownload, FiRotateCcw, FiSearch } from 'react-icons/fi';
 
 const InventoryPage = () => {
   const [form] = Form.useForm();
   const [filters, setFilters] = useState<Record<string, any>>({});
-  const [selected, setSelected] = useState<Record<string, string>>({});
+  const [selected, setSelected] = useState<Record<string, any>>({});
   const [keywordInput, setKeywordInput] = useState('');
   const debouncedKeyword = useDebounce(keywordInput, 300);
 
-  // Gộp selected + debounced keyword để gửi cho API filters
   const selectedWithKeyword = debouncedKeyword
     ? { ...selected, keyword: debouncedKeyword }
     : selected;
 
   const { data: inventoryRes, isLoading } = useGetInventory(filters);
-  const { data: statsRes } = useGetInventoryStats(filters);
   const { data: filtersRes } = useGetInventoryFilters(selectedWithKeyword);
 
   const dataSource = inventoryRes?.data || [];
-  const stats = {
-    totalItems: Number(statsRes?.data?.totalItems) || 0,
-    totalValue: Number(statsRes?.data?.totalValue) || 0,
-    lowStockCount: Number(statsRes?.data?.lowStockCount) || 0,
-  };
   const filterOptions = filtersRes?.data || { warehouses: [], categories: [], suppliers: [], batches: [] };
 
-  // Khi thay đổi bất kỳ select nào → cập nhật selected để refetch options
-  const handleSelectChange = (field: string, value: string | undefined) => {
+  const handleSelectChange = (field: string, value: any) => {
     setSelected(prev => {
       const next = { ...prev };
-      if (value) next[field] = value;
+      if (value !== undefined && value !== null && value !== '') next[field] = value;
       else delete next[field];
       return next;
     });
@@ -56,7 +40,7 @@ const InventoryPage = () => {
 
   const onFinish = (values: any) => {
     const params: Record<string, any> = {};
-    if (values.warehouse) params.warehouse = values.warehouse;
+    if (values.warehouse_id) params.warehouse_id = values.warehouse_id;
     if (values.category) params.category = values.category;
     if (values.supplier) params.supplier = values.supplier;
     if (values.batch) params.batch = values.batch;
@@ -75,17 +59,14 @@ const InventoryPage = () => {
     exportToExcel(
       [
         { title: 'STT', dataIndex: 'index' },
-        { title: 'Tên sản phẩm', dataIndex: 'name' },
-        { title: 'Đơn vị', dataIndex: 'unit' },
-        { title: 'Kho', dataIndex: 'warehouse' },
+        { title: 'Tên sản phẩm', dataIndex: 'product_name' },
+        { title: 'Đơn vị', dataIndex: 'small_unit', render: (u: any) => u?.label || '' },
+        { title: 'Kho', dataIndex: 'warehouse_name' },
         { title: 'Loại sản phẩm', dataIndex: 'category' },
         { title: 'Nhà cung cấp', dataIndex: 'supplier' },
         { title: 'Lô', dataIndex: 'batch' },
-        { title: 'Hạn dùng', dataIndex: 'expiryDate', render: (val: string) => val ? formatDate(val) : '' },
-        { title: 'Ngày nhập', dataIndex: 'importDate' },
-        { title: 'Số lượng', dataIndex: 'quantity' },
-        { title: 'Đơn giá', dataIndex: 'price', render: (val: number) => Number(val) },
-        { title: 'Thành tiền', dataIndex: 'price', render: (_: any, r: any) => Number(r.price) * Number(r.quantity) },
+        { title: 'Hạn dùng', dataIndex: 'nearest_expiry', render: (v: string) => v ? formatDate(v) : '' },
+        { title: 'Tồn', dataIndex: 'stock_pieces' },
       ],
       dataSource,
       `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
@@ -96,34 +77,26 @@ const InventoryPage = () => {
   const columns = [
     sttColumn,
     {
-      title: 'Tên sản phẩm',
-      dataIndex: 'name',
-      key: 'name',
+      title: 'Tên sản phẩm', dataIndex: 'product_name', key: 'product_name',
       render: (text: string, record: any) => (
         <div>
           <div className="font-bold">{text}</div>
-          <div className="text-xs text-gray-500">{record.unit}</div>
+          {record.small_unit?.label && <div className="text-xs text-gray-500">{record.small_unit.label}</div>}
         </div>
       ),
     },
-    { title: 'Kho', dataIndex: 'warehouse', key: 'warehouse' },
+    { title: 'Kho', dataIndex: 'warehouse_name', key: 'warehouse_name' },
     {
-      title: 'Loại sản phẩm',
-      dataIndex: 'category',
-      key: 'category',
-      render: (text: string) => text ? <Tag color="blue">{text}</Tag> : '-',
+      title: 'Loại', dataIndex: 'category', key: 'category',
+      render: (t: string) => t ? <Tag color="blue">{t}</Tag> : '-',
     },
     { title: 'Nhà cung cấp', dataIndex: 'supplier', key: 'supplier' },
     {
-      title: 'Lô',
-      dataIndex: 'batch',
-      key: 'batch',
-      render: (text: string) => <Tag color="blue">{text}</Tag>,
+      title: 'Lô', dataIndex: 'batch', key: 'batch',
+      render: (t: string) => <Tag color="geekblue">{t}</Tag>,
     },
     {
-      title: 'Hạn dùng',
-      dataIndex: 'expiryDate',
-      key: 'expiryDate',
+      title: 'Hạn dùng gần nhất', dataIndex: 'nearest_expiry', key: 'nearest_expiry',
       align: 'center' as const,
       render: (date: string) => {
         if (!date) return '-';
@@ -134,112 +107,70 @@ const InventoryPage = () => {
         return <Tag color={color}>{formatDate(date)}</Tag>;
       },
     },
-    { title: 'Ngày nhập', dataIndex: 'importDate', key: 'importDate', align: 'center' as const },
     {
-      title: 'Số lượng',
-      dataIndex: 'quantity',
-      key: 'quantity',
+      title: 'Tồn', dataIndex: 'stock_pieces', key: 'stock_pieces',
       align: 'right' as const,
-      render: (val: number, record: any) => (
-        <span className={val < record.minStock ? 'text-error font-bold' : ''}>
-          {val?.toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      title: 'Đơn giá',
-      dataIndex: 'price',
-      key: 'price',
-      align: 'right' as const,
-      render: (val: number) => formatCurrency(Number(val)),
-    },
-    {
-      title: 'Thành tiền',
-      key: 'total',
-      align: 'right' as const,
-      render: (_: any, record: any) => formatCurrency(Number(record.price) * Number(record.quantity)),
+      render: (val: number, record: any) => {
+        const total = Number(val) || 0;
+        const upc = Number(record.units_per_carton) || 0;
+        const unitLabel = record.small_unit?.label || '';
+        if (upc > 1 && total > 0) {
+          const cartons = Math.floor(total / upc);
+          const pieces = total - cartons * upc;
+          const parts: string[] = [];
+          if (cartons > 0) parts.push(`${formatNumber(cartons)} Kiện × ${upc}`);
+          if (pieces > 0) parts.push(`${formatNumber(pieces)} ${unitLabel}`);
+          return (
+            <span>
+              {parts.join(' + ')} <span className="text-gray-400">= {formatNumber(total)} {unitLabel}</span>
+            </span>
+          );
+        }
+        return `${formatNumber(total)} ${unitLabel}`;
+      },
     },
   ];
 
   return (
     <div className="inventory-page">
-      <Row gutter={[16, 16]} className="mb-6">
-        <StatCard
-          title="Tổng mặt hàng"
-          value={stats.totalItems}
-          prefix={<FiBox className="mr-2 text-primary" />}
-          bgColor="bg-blue-50"
-        />
-        <StatCard
-          title="Tổng giá trị kho"
-          value={stats.totalValue}
-          suffix="đ"
-          prefix={<FiDollarSign className="mr-2 text-success" />}
-          bgColor="bg-green-50"
-        />
-        <StatCard
-          title="Sắp hết hạn / Tồn thấp"
-          value={stats.lowStockCount}
-          prefix={<FiAlertCircle className="mr-2" />}
-          bgColor="bg-red-50"
-          valueStyle={{ color: '#cf1322' }}
-        />
-      </Row>
-
       <div className="p-6 mb-6 bg-white rounded-lg shadow-sm filter-section">
         <Form form={form} layout="vertical" onFinish={onFinish}>
           <Row gutter={[24, 16]}>
-            <Col xs={24} sm={12} md={6} lg={6}>
-              <Form.Item name="warehouse" label="Kho">
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item name="warehouse_id" label="Kho">
                 <AppSelect
-                  allowClear
-                  showSearch
-                  placeholder="Chọn kho"
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                  }
+                  allowClear showSearch placeholder="Chọn kho"
+                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
                   options={filterOptions.warehouses}
-                  onChange={(val) => handleSelectChange('warehouse', val)}
+                  onChange={(val) => handleSelectChange('warehouse_id', val)}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6} lg={6}>
-              <Form.Item name="category" label="Loại sản phẩm">
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item name="category" label="Loại">
                 <AppSelect
-                  allowClear
-                  showSearch
-                  placeholder="Chọn loại sản phẩm"
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                  }
+                  allowClear showSearch placeholder="Chọn loại"
+                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
                   options={filterOptions.categories}
                   onChange={(val) => handleSelectChange('category', val)}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6} lg={6}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item name="supplier" label="Nhà cung cấp">
                 <AppSelect
-                  allowClear
-                  showSearch
-                  placeholder="Chọn nhà cung cấp"
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                  }
+                  allowClear showSearch placeholder="Chọn NCC"
+                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
                   options={filterOptions.suppliers}
                   onChange={(val) => handleSelectChange('supplier', val)}
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={6} lg={6}>
+            <Col xs={24} sm={12} md={6}>
               <Form.Item name="batch" label="Lô">
                 <AppSelect
-                  allowClear
-                  showSearch
-                  placeholder="Chọn số lô"
-                  filterOption={(input, option) =>
-                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                  }
+                  allowClear showSearch placeholder="Chọn lô"
+                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
                   options={filterOptions.batches}
                   onChange={(val) => handleSelectChange('batch', val)}
                 />
@@ -247,24 +178,16 @@ const InventoryPage = () => {
             </Col>
           </Row>
           <Row gutter={[24, 16]} align="bottom">
-            <Col xs={24} md={12} lg={16}>
+            <Col xs={24} md={16}>
               <Form.Item name="keyword" label="Tìm kiếm nhanh" className="mb-0">
-                <AppInput
-                  placeholder="Nhập tên sản phẩm hoặc mã..."
-                  prefix={<FiSearch />}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                />
+                <AppInput placeholder="Nhập tên sản phẩm..." prefix={<FiSearch />}
+                  onChange={(e) => setKeywordInput(e.target.value)} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={12} lg={8}>
+            <Col xs={24} md={8}>
               <div className="flex justify-end">
                 <Space size="middle">
-                  <AppButton
-                    onClick={onClear}
-                    icon={<FiRotateCcw />}
-                    variant="outlined"
-                    type="default"
-                  >
+                  <AppButton onClick={onClear} icon={<FiRotateCcw />} variant="outlined" type="default">
                     Xóa bộ lọc
                   </AppButton>
                   <AppButton type="primary" htmlType="submit" icon={<FiSearch />} loading={isLoading}>
@@ -280,7 +203,7 @@ const InventoryPage = () => {
       <div className="p-6 bg-white rounded-lg shadow-sm table-section">
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg font-medium summary">
-            Tổng số sản phẩm: <span className="text-primary">{dataSource.length}</span>
+            Số dòng tồn: <span className="text-primary">{dataSource.length}</span>
           </div>
           <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
             Xuất Excel
@@ -290,7 +213,7 @@ const InventoryPage = () => {
           columns={columns}
           dataSource={dataSource}
           loading={isLoading}
-          scroll={{ x: 1400 }}
+          scroll={{ x: 1200 }}
           pagination={{ pageSize: 10, total: dataSource.length, showSizeChanger: true }}
         />
       </div>

@@ -2,42 +2,51 @@ import httpClient from './httpClient';
 import { APIResponse } from '@/types/api.type';
 
 export interface SaleItem {
-  productName: string;
+  id?: number;
+  product_id: number;
+  product_name: string;
+  warehouse_id: number;
+  warehouse_name?: string;
+  supplier: string;
+  batch: string;
+  small_unit_id: number;
+  small_unit?: { id: number; code: string; label: string } | null;
   quantity: number;
-  unit: string;
-  unitPrice: number;
+  unit_price: number;
   total: number;
 }
 
 export interface Sale {
-  key: string;
   id: number;
+  key: string;
   invoice_code: string;
   customer_name: string;
   customer_phone: string;
+  customer_address: string;
   sale_type: string;
   items: SaleItem[];
   total_amount: number;
   paid: boolean;
   sale_date: string;
-  created_by: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface CreateSaleRequest {
   customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
+  customerAddress?: string;
   saleType: string;
-  items: SaleItem[];
+  items: Omit<SaleItem, 'id' | 'warehouse_name' | 'small_unit'>[];
   paid: boolean;
   saleDate: string;
-  createdBy?: string;
 }
 
 export interface SaleFilters {
   keyword?: string;
   paid?: string;
   saleDate?: string;
+  sale_type?: string;
   page?: number;
   limit?: number;
 }

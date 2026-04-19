@@ -4,13 +4,13 @@ import { ActionColumn } from '@/components/molecules/action-column';
 import { CrudModal } from '@/components/organisms/crud-modal';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { TableSection } from '@/components/organisms/table-section';
-import { statusOptions, statusLabels, roleLabels } from '@/constants/options';
+import { statusOptions, statusLabels, roleLabels, roleOptions } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import { useGetAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/api/accounts';
 import { useAppSelector } from '@/shared/redux/hooks';
 import { sttColumn } from '@/utils/tableColumns';
-import { Col, Form, Row, Tag, message } from 'antd';
-import { useState } from 'react';
+import { Col, Form, Row, Tag, Tooltip, message } from 'antd';
+import { useMemo, useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { noSpaceRule } from '@/utils/validationRules';
 
@@ -30,22 +30,31 @@ const AccountsPage = () => {
   const [modalForm] = Form.useForm();
   const [filters, setFilters] = useState<{ keyword?: string; status?: string }>({});
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<Account | null>(null);
+  const [editingItem, setEditingItem] = useState<Account | null>(null);
 
   const currentUser = useAppSelector(state => state.auth.user);
-  const isSuperAdmin = currentUser?.roles?.some(r => r.role === 'super_admin');
+  const isSuperAdmin = currentUser?.roles?.some(r => r.role === 'super_admin') ?? false;
 
   const { data: accountsRes, isLoading } = useGetAccounts(filters);
   const createMutation = useCreateAccount();
   const updateMutation = useUpdateAccount();
   const deleteMutation = useDeleteAccount();
 
-  const filteredData: Account[] = (accountsRes?.data || []).map((item: any) => ({
-    ...item,
-    key: item.key || String(item.id),
-  }));
+  const dataSource: Account[] = useMemo(
+    () => (accountsRes?.data || []).map((item: any) => ({
+      ...item,
+      key: item.key || String(item.id),
+    })),
+    [accountsRes?.data],
+  );
 
   const loading = isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  const canDeleteRow = (row: Account): boolean => {
+    if (row.id === currentUser?.id) return false;
+    if ((row.role === 'admin' || row.role === 'super_admin') && !isSuperAdmin) return false;
+    return true;
+  };
 
   const onSearch = (values: any) => {
     setFilters({ keyword: values.keyword, status: values.status });
@@ -56,15 +65,15 @@ const AccountsPage = () => {
     setFilters({});
   };
 
-  const openCreateModal = (defaultValues?: Record<string, any>) => {
-    setEditingRecord(null);
+  const openCreateModal = () => {
+    setEditingItem(null);
     modalForm.resetFields();
-    if (defaultValues) modalForm.setFieldsValue(defaultValues);
+    modalForm.setFieldsValue({ status: Status.ACTIVE });
     setModalOpen(true);
   };
 
   const openEditModal = (record: Account) => {
-    setEditingRecord(record);
+    setEditingItem(record);
     modalForm.resetFields();
     modalForm.setFieldsValue(record);
     setModalOpen(true);
@@ -72,23 +81,25 @@ const AccountsPage = () => {
 
   const closeModal = () => {
     setModalOpen(false);
-    setEditingRecord(null);
+    setEditingItem(null);
     modalForm.resetFields();
   };
 
   const onSubmit = () => {
     modalForm.validateFields().then(values => {
-      if (editingRecord) {
-        const { fullName, email, phone, status } = values;
-        updateMutation.mutate({ id: editingRecord.id, data: { fullName, email, phone, status } }, {
+      if (editingItem) {
+        const { fullName, email, phone, status, role } = values;
+        const payload: Record<string, unknown> = { fullName, email, phone, status };
+        if (isSuperAdmin && role !== editingItem.role) payload.role = role;
+        updateMutation.mutate({ id: editingItem.id, data: payload }, {
           onSuccess: () => { message.success('Cập nhật tài khoản thành công'); closeModal(); },
-          onError: () => message.error('Cập nhật tài khoản thất bại'),
+          onError: (err: any) => message.error(err?.data?.message || 'Cập nhật tài khoản thất bại'),
         });
       } else {
         const { fullName, username, email, phone, password } = values;
-        createMutation.mutate({ fullName, username, email, phone, password }, {
+        createMutation.mutate({ fullName, username, email, phone, password, role: 'admin' }, {
           onSuccess: () => { message.success('Thêm tài khoản thành công'); closeModal(); },
-          onError: () => message.error('Thêm tài khoản thất bại'),
+          onError: (err: any) => message.error(err?.data?.message || 'Thêm tài khoản thất bại'),
         });
       }
     });
@@ -97,9 +108,13 @@ const AccountsPage = () => {
   const handleDelete = (record: Account) => {
     deleteMutation.mutate(record.id, {
       onSuccess: () => message.success('Xóa tài khoản thành công'),
-      onError: () => message.error('Xóa tài khoản thất bại'),
+      onError: (err: any) => message.error(err?.data?.message || 'Xóa tài khoản thất bại'),
     });
   };
+
+  const availableRoleOptions = isSuperAdmin
+    ? roleOptions
+    : roleOptions.filter(r => r.value !== 'super_admin');
 
   const columns = [
     sttColumn,
@@ -141,15 +156,37 @@ const AccountsPage = () => {
       key: 'actions',
       align: 'center' as const,
       width: 150,
-      render: (_: any, record: Account) => (
-        <ActionColumn
-          onEdit={() => openEditModal(record)}
-          onDelete={() => handleDelete(record)}
-          deleteTitle="Xóa tài khoản"
-          deleteDescription={`Bạn có chắc muốn xóa tài khoản "${record.fullName}"?`}
-          showDelete={!!isSuperAdmin}
-        />
-      ),
+      render: (_: any, record: Account) => {
+        const canDelete = canDeleteRow(record);
+        const deleteTooltip = record.id === currentUser?.id
+          ? 'Không thể xóa chính mình'
+          : !isSuperAdmin && record.role === 'admin'
+            ? 'Chỉ super admin mới xóa được admin'
+            : undefined;
+
+        if (!canDelete && deleteTooltip) {
+          return (
+            <Tooltip title={deleteTooltip}>
+              <span>
+                <ActionColumn
+                  onEdit={() => openEditModal(record)}
+                  showDelete={false}
+                />
+              </span>
+            </Tooltip>
+          );
+        }
+
+        return (
+          <ActionColumn
+            onEdit={() => openEditModal(record)}
+            onDelete={() => handleDelete(record)}
+            deleteTitle="Xóa tài khoản"
+            deleteDescription={`Bạn có chắc muốn xóa tài khoản "${record.fullName}"?`}
+            showDelete={canDelete}
+          />
+        );
+      },
     },
   ];
 
@@ -171,20 +208,21 @@ const AccountsPage = () => {
 
       <TableSection
         totalLabel="Tổng số tài khoản"
-        totalCount={filteredData.length}
+        totalCount={dataSource.length}
         addLabel="Thêm tài khoản"
-        onAdd={() => openCreateModal({ status: Status.ACTIVE })}
+        onAdd={openCreateModal}
         columns={columns}
-        dataSource={filteredData}
+        dataSource={dataSource}
         loading={loading}
       />
 
       <CrudModal
         open={modalOpen}
-        title={editingRecord ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
+        title={editingItem ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới'}
         onCancel={closeModal}
         onSubmit={onSubmit}
-        submitLabel={editingRecord ? 'Cập nhật' : 'Thêm mới'}
+        submitLabel={editingItem ? 'Cập nhật' : 'Thêm mới'}
+        loading={createMutation.isPending || updateMutation.isPending}
       >
         <Form form={modalForm} layout="vertical" className="pt-4" autoComplete="off">
           <Row gutter={[16, 0]}>
@@ -205,7 +243,7 @@ const AccountsPage = () => {
               >
                 <AppInput
                   placeholder="Nhập tên đăng nhập"
-                  disabled={!!editingRecord}
+                  disabled={!!editingItem}
                   autoComplete="new-password"
                 />
               </Form.Item>
@@ -234,8 +272,19 @@ const AccountsPage = () => {
               </Form.Item>
             </Col>
           </Row>
-          {editingRecord && (
+          {editingItem && (
             <Row gutter={[16, 0]}>
+              {isSuperAdmin && (
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    name="role"
+                    label="Vai trò"
+                    rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
+                  >
+                    <AppSelect placeholder="Chọn vai trò" options={availableRoleOptions} />
+                  </Form.Item>
+                </Col>
+              )}
               <Col xs={24} sm={12}>
                 <Form.Item
                   name="status"
@@ -247,7 +296,7 @@ const AccountsPage = () => {
               </Col>
             </Row>
           )}
-          {!editingRecord && (
+          {!editingItem && (
             <Row gutter={[16, 0]}>
               <Col xs={24} sm={12}>
                 <Form.Item

@@ -23,23 +23,40 @@ export default sequelize;
 // ── Import & register models ────────────────────────────
 import { User } from './User';
 import { Role } from './Role';
-import { Product } from './Product';
-import { ProductUnitEntry } from './ProductUnitEntry';
 import { Warehouse } from './Warehouse';
-import { Sale } from './Sale';
-import { SaleItem } from './SaleItem';
+import { SmallUnit } from './SmallUnit';
+import { Product } from './Product';
+import { StockImport } from './StockImport';
+import { SaleOrder } from './SaleOrder';
+import { StockExport } from './StockExport';
+import { InventoryBalance } from './InventoryBalance';
 
 // ── Define associations ─────────────────────────────────
 User.belongsToMany(Role, { through: 'user_roles', foreignKey: 'user_id', otherKey: 'role_id', as: 'roles', timestamps: false });
 Role.belongsToMany(User, { through: 'user_roles', foreignKey: 'role_id', otherKey: 'user_id', as: 'users', timestamps: false });
 
-Warehouse.hasMany(Product, { foreignKey: 'warehouse_id', as: 'products' });
-Product.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'warehouse' });
+// Catalog
+Product.belongsTo(SmallUnit, { foreignKey: 'default_small_unit_id', as: 'defaultSmallUnit' });
+SmallUnit.hasMany(Product, { foreignKey: 'default_small_unit_id', as: 'products' });
 
-Product.hasMany(ProductUnitEntry, { foreignKey: 'product_id', as: 'unitEntries', onDelete: 'CASCADE' });
-ProductUnitEntry.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+// Stock imports
+StockImport.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+StockImport.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'warehouse' });
+StockImport.belongsTo(SmallUnit, { foreignKey: 'small_unit_id', as: 'smallUnit' });
+StockImport.belongsTo(User, { foreignKey: 'imported_by_user_id', as: 'importer' });
+Product.hasMany(StockImport, { foreignKey: 'product_id', as: 'imports' });
+Warehouse.hasMany(StockImport, { foreignKey: 'warehouse_id', as: 'imports' });
 
-Sale.hasMany(SaleItem, { foreignKey: 'sale_id', as: 'items', onDelete: 'CASCADE' });
-SaleItem.belongsTo(Sale, { foreignKey: 'sale_id', as: 'sale' });
+// Sale orders + stock exports
+SaleOrder.hasMany(StockExport, { foreignKey: 'sale_order_id', as: 'items', onDelete: 'CASCADE' });
+StockExport.belongsTo(SaleOrder, { foreignKey: 'sale_order_id', as: 'order' });
+StockExport.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+StockExport.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'warehouse' });
+StockExport.belongsTo(SmallUnit, { foreignKey: 'small_unit_id', as: 'smallUnit' });
+SaleOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy' });
 
-export { User, Role, Product, ProductUnitEntry, Warehouse, Sale, SaleItem };
+// Inventory balance
+InventoryBalance.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+InventoryBalance.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'warehouse' });
+
+export { User, Role, Warehouse, SmallUnit, Product, StockImport, SaleOrder, StockExport, InventoryBalance };
