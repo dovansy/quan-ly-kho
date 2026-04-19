@@ -2,9 +2,9 @@
 -- Run this script to initialize the database
 -- Destructive: drops existing tables. Use `npm run seed` to run.
 
-CREATE DATABASE IF NOT EXISTS quan_ly_kho
+CREATE DATABASE IF NOT EXISTS railway
   CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-USE quan_ly_kho;
+USE railway;
 
 -- Drop trigger trước
 DROP TRIGGER IF EXISTS trg_si_after_insert;

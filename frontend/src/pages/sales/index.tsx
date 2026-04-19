@@ -14,13 +14,14 @@ import { useGetSales, useCreateSale, useUpdateSale, useDeleteSale } from '@/hook
 import { useGetInventory } from '@/hooks/api/inventory';
 import { sttColumn } from '@/utils/tableColumns';
 import { formatCurrency, formatDate, toApiDate } from '@/utils/format';
+import { exportToExcel } from '@/utils/exportExcel';
 import { Col, Form, Row, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { SaleType } from '@/constants/enums';
 import {
   FiPlus, FiSearch, FiTrash2, FiDollarSign, FiAlertCircle,
-  FiShoppingCart, FiPackage, FiUsers,
+  FiShoppingCart, FiPackage, FiUsers, FiDownload,
 } from 'react-icons/fi';
 
 interface SaleLine {
@@ -251,6 +252,56 @@ const SalesPage = () => {
     });
   };
 
+  const handleExportExcel = () => {
+    const flat = data.flatMap(s => {
+      const saleTypeLabel = saleTypeLabels[s.sale_type]?.label || s.sale_type;
+      const items = s.items.length ? s.items : [null];
+      return items.map((l: any) => ({
+        invoice_code: s.invoice_code,
+        customer_name: s.customer_name,
+        customer_phone: s.customer_phone,
+        customer_address: s.customer_address,
+        sale_type: saleTypeLabel,
+        paid: s.paid ? 'Đã trả' : 'Còn nợ',
+        sale_date: s.sale_date,
+        total_amount: s.total_amount,
+        product_name: l?.product_name || '',
+        warehouse_name: l?.warehouse_name || '',
+        supplier: l?.supplier || '',
+        batch: l?.batch || '',
+        small_unit_label: l?.small_unit_label || '',
+        quantity: l?.quantity ?? '',
+        unit_price: l?.unit_price ?? '',
+        line_total: l?.total ?? '',
+      }));
+    });
+
+    exportToExcel(
+      [
+        { title: 'STT', dataIndex: 'index' },
+        { title: 'Mã HĐ', dataIndex: 'invoice_code' },
+        { title: 'Khách hàng', dataIndex: 'customer_name' },
+        { title: 'SĐT', dataIndex: 'customer_phone' },
+        { title: 'Địa chỉ', dataIndex: 'customer_address' },
+        { title: 'Loại bán', dataIndex: 'sale_type' },
+        { title: 'Thanh toán', dataIndex: 'paid' },
+        { title: 'Ngày bán', dataIndex: 'sale_date', render: (v: string) => v ? formatDate(v) : '' },
+        { title: 'Tên SP', dataIndex: 'product_name' },
+        { title: 'Kho', dataIndex: 'warehouse_name' },
+        { title: 'NCC', dataIndex: 'supplier' },
+        { title: 'Lô', dataIndex: 'batch' },
+        { title: 'Đơn vị', dataIndex: 'small_unit_label' },
+        { title: 'Số lượng', dataIndex: 'quantity' },
+        { title: 'Đơn giá', dataIndex: 'unit_price' },
+        { title: 'Thành tiền dòng', dataIndex: 'line_total' },
+        { title: 'Tổng HĐ', dataIndex: 'total_amount' },
+      ],
+      flat,
+      `Ban_hang_${dayjs().format('YYYYMMDD_HHmmss')}`,
+      'Ban hang',
+    );
+  };
+
   const columns = [
     sttColumn,
     { title: 'Mã HĐ', dataIndex: 'invoice_code', key: 'invoice_code',
@@ -328,6 +379,11 @@ const SalesPage = () => {
       <TableSection
         totalLabel="Tổng số hóa đơn"
         totalCount={data.length}
+        extraActions={
+          <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
+            Xuất Excel
+          </AppButton>
+        }
         columns={columns}
         dataSource={data}
         loading={loading}

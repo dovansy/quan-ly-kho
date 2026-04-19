@@ -14,10 +14,12 @@ import { useGetWarehouseList } from '@/hooks/api/warehouses';
 import { useGetProducts, useGetProductCategories } from '@/hooks/api/products';
 import { sttColumn } from '@/utils/tableColumns';
 import { formatDate, formatNumber } from '@/utils/format';
+import { exportToExcel } from '@/utils/exportExcel';
+import { AppButton } from '@/components/atoms/AppButton';
 import { Col, Form, Row, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
-import { FiSearch } from 'react-icons/fi';
+import { FiDownload, FiSearch } from 'react-icons/fi';
 
 interface ImportRecord {
   id: number;
@@ -153,6 +155,30 @@ const ImportsPage = () => {
     });
   };
 
+  const handleExportExcel = () => {
+    exportToExcel(
+      [
+        { title: 'STT', dataIndex: 'index' },
+        { title: 'Tên SP', dataIndex: 'product_name' },
+        { title: 'Loại', dataIndex: 'category' },
+        { title: 'Kho', dataIndex: 'warehouse_name' },
+        { title: 'NCC', dataIndex: 'supplier' },
+        { title: 'Lô', dataIndex: 'batch' },
+        { title: 'Đơn vị lẻ', dataIndex: 'small_unit', render: (u: any) => u?.label || '' },
+        { title: 'Số kiện', dataIndex: 'carton_quantity' },
+        { title: 'Lẻ/Kiện', dataIndex: 'units_per_carton' },
+        { title: 'Số lẻ (ngoài kiện)', dataIndex: 'piece_quantity' },
+        { title: 'Tổng (lẻ)', dataIndex: 'total_pieces' },
+        { title: 'HSD', dataIndex: 'expiry_date', render: (v: string) => v ? formatDate(v) : '' },
+        { title: 'Ngày nhập', dataIndex: 'import_date', render: (v: string) => v ? formatDate(v) : '' },
+        { title: 'Người nhập', dataIndex: 'imported_by' },
+      ],
+      data,
+      `Nhap_hang_${dayjs().format('YYYYMMDD_HHmmss')}`,
+      'Nhap hang',
+    );
+  };
+
   const cartonQty = Number(Form.useWatch('carton_quantity', modalForm)) || 0;
   const unitsPer = Number(Form.useWatch('units_per_carton', modalForm)) || 0;
   const pieceQty = Number(Form.useWatch('piece_quantity', modalForm)) || 0;
@@ -282,6 +308,11 @@ const ImportsPage = () => {
         totalCount={data.length}
         addLabel="Nhập hàng mới"
         onAdd={openCreate}
+        extraActions={
+          <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
+            Xuất Excel
+          </AppButton>
+        }
         columns={columns}
         dataSource={data.map(d => ({ ...d, key: String(d.id) }))}
         loading={loading}
