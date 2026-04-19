@@ -38,16 +38,16 @@ export enum HttpErrorCode {
 }
 
 export const HttpErrorMessage: Record<HttpErrorCode | number | string, string> = {
-  [HttpErrorCode.WRONG_PASSWORD]: 'Incorrect password',
-  [HttpErrorCode.USER_NOT_FOUND]: 'There is not an admin account associated with this email.',
-  [HttpErrorCode.UNKNOWN_ERROR]: 'Something went wrong. Please try again!',
-  [HttpErrorCode.UNAUTHORIZED]: 'Unauthorized',
-  [HttpErrorCode.EXISTED_USER]: 'There is already an account associated with this email.',
+  [HttpErrorCode.WRONG_PASSWORD]: 'Mật khẩu không đúng',
+  [HttpErrorCode.USER_NOT_FOUND]: 'Tên đăng nhập không tồn tại',
+  [HttpErrorCode.UNKNOWN_ERROR]: 'Đã có lỗi xảy ra. Vui lòng thử lại!',
+  [HttpErrorCode.UNAUTHORIZED]: 'Phiên đăng nhập đã hết hạn',
+  [HttpErrorCode.EXISTED_USER]: 'Tài khoản đã tồn tại',
   [HttpErrorCode.DEACTIVATED_USER]:
-    'Your account has been suspended. Please contact super admin for support.',
-  [HttpErrorCode.WAGER_NOT_FOUND]: 'Invalid wager',
+    'Tài khoản của bạn đã bị vô hiệu hóa. Vui lòng liên hệ super admin.',
+  [HttpErrorCode.WAGER_NOT_FOUND]: 'Không tìm thấy bản ghi',
   [HttpErrorCode.AMOUNT_WIN_NOT_ENOUGH]:
-    'The adjustment value exceeds the settlement amount of this wager',
+    'Giá trị điều chỉnh vượt quá số tiền thanh toán',
   [HttpErrorCode.AMOUNT_LOSE_NOT_ENOUGH]:
-    'The adjustment value exceeds the settlement amount of this wager',
+    'Giá trị điều chỉnh vượt quá số tiền thanh toán',
 };

@@ -40,13 +40,13 @@ httpClient.interceptors.response.use(
       // Return the error in the format the frontend expects
       return Promise.reject({
         status,
-        data: data || { code: status, message: 'Unknown error', data: null },
+        data: data || { code: status, message: 'Đã có lỗi xảy ra', data: null },
       });
     }
 
     return Promise.reject({
       status: 0,
-      data: { code: 9999, message: 'Network error', data: null },
+      data: { code: 9999, message: 'Lỗi kết nối mạng', data: null },
     });
   },
 );
