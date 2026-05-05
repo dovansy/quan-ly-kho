@@ -50,12 +50,26 @@ export function exportToExcel(
     ws[cellRef].s = headerStyle;
   });
 
-  const firstColCenterStyle = {
+  const bodyFont = { sz: 14, color: { rgb: '000000' } };
+  const bodyStyle = {
+    font: bodyFont,
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+  const firstColStyle = {
+    font: bodyFont,
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
   };
   for (let r = 1; r <= rows.length; r++) {
-    const cellRef = XLSX.utils.encode_cell({ r, c: 0 });
-    if (ws[cellRef]) ws[cellRef].s = firstColCenterStyle;
+    for (let c = 0; c < headers.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c });
+      if (!ws[cellRef]) continue;
+      ws[cellRef].s = c === 0 ? firstColStyle : bodyStyle;
+    }
   }
 
   ws['!rows'] = [{ hpt: 24 }];
