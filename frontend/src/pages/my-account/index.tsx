@@ -27,14 +27,14 @@ const MyAccountPage = () => {
       updateProfileMutation.mutate(
         { fullName: values.fullName, email: values.email, phone: values.phone },
         {
-          onSuccess: (res) => {
+          onSuccess: res => {
             message.success('Cập nhật thông tin thành công');
             if (res.data.data) {
               dispatch(updateUser(res.data.data));
             }
           },
           onError: () => message.error('Cập nhật thất bại'),
-        },
+        }
       );
     });
   };
@@ -51,12 +51,14 @@ const MyAccountPage = () => {
           onError: (error: any) => {
             const code = error?.data?.code;
             if (code === 4001) {
-              passwordForm.setFields([{ name: 'currentPassword', errors: ['Mật khẩu hiện tại không đúng'] }]);
+              passwordForm.setFields([
+                { name: 'currentPassword', errors: ['Mật khẩu hiện tại không đúng'] },
+              ]);
             } else {
               message.error('Đổi mật khẩu thất bại');
             }
           },
-        },
+        }
       );
     });
   };
@@ -69,7 +71,7 @@ const MyAccountPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-20">
+      <div className="flex items-center justify-center py-20">
         <Spin size="large" />
       </div>
     );
@@ -80,8 +82,8 @@ const MyAccountPage = () => {
     : { label: 'N/A', color: 'default' };
 
   return (
-    <div className="my-account-page max-w-[800px] mx-auto">
-      <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+    <div className="mx-auto my-account-page">
+      <h2 className="flex items-center gap-2 mb-6 text-2xl font-bold">
         <FiUser /> Tài khoản của tôi
       </h2>
 
@@ -89,7 +91,7 @@ const MyAccountPage = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold">Thông tin cá nhân</h3>
-            <p className="text-gray-500 text-sm">Cập nhật thông tin tài khoản của bạn</p>
+            <p className="text-sm text-gray-500">Cập nhật thông tin tài khoản của bạn</p>
           </div>
           <Tag color={roleInfo.color}>{roleInfo.label}</Tag>
         </div>
@@ -136,10 +138,7 @@ const MyAccountPage = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item
-                name="phone"
-                label="Số điện thoại"
-              >
+              <Form.Item name="phone" label="Số điện thoại">
                 <AppInput placeholder="Nhập số điện thoại" />
               </Form.Item>
             </Col>
@@ -158,10 +157,10 @@ const MyAccountPage = () => {
 
       <Card className="mb-6">
         <div className="mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
+          <h3 className="flex items-center gap-2 text-lg font-semibold">
             <FiLock /> Đổi mật khẩu
           </h3>
-          <p className="text-gray-500 text-sm">Thay đổi mật khẩu đăng nhập</p>
+          <p className="text-sm text-gray-500">Thay đổi mật khẩu đăng nhập</p>
         </div>
 
         <Divider className="my-3" />
@@ -172,9 +171,16 @@ const MyAccountPage = () => {
               <Form.Item
                 name="currentPassword"
                 label="Mật khẩu hiện tại"
-                rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }, noSpaceRule]}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập mật khẩu hiện tại' },
+                  noSpaceRule,
+                ]}
               >
-                <AppInput type="password" placeholder="Nhập mật khẩu hiện tại" autoComplete="new-password" />
+                <AppInput
+                  type="password"
+                  placeholder="Nhập mật khẩu hiện tại"
+                  autoComplete="new-password"
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
@@ -187,7 +193,11 @@ const MyAccountPage = () => {
                   noSpaceRule,
                 ]}
               >
-                <AppInput type="password" placeholder="Nhập mật khẩu mới" autoComplete="new-password" />
+                <AppInput
+                  type="password"
+                  placeholder="Nhập mật khẩu mới"
+                  autoComplete="new-password"
+                />
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
@@ -200,13 +210,18 @@ const MyAccountPage = () => {
                   noSpaceRule,
                   ({ getFieldValue }) => ({
                     validator(_, value) {
-                      if (!value || getFieldValue('newPassword') === value) return Promise.resolve();
+                      if (!value || getFieldValue('newPassword') === value)
+                        return Promise.resolve();
                       return Promise.reject(new Error('Mật khẩu không khớp'));
                     },
                   }),
                 ]}
               >
-                <AppInput type="password" placeholder="Nhập lại mật khẩu mới" autoComplete="new-password" />
+                <AppInput
+                  type="password"
+                  placeholder="Nhập lại mật khẩu mới"
+                  autoComplete="new-password"
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -225,10 +240,10 @@ const MyAccountPage = () => {
       <Card>
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-red-600 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-red-600">
               <FiLogOut /> Đăng xuất
             </h3>
-            <p className="text-gray-500 text-sm">Đăng xuất khỏi tài khoản hiện tại</p>
+            <p className="text-sm text-gray-500">Đăng xuất khỏi tài khoản hiện tại</p>
           </div>
           <AppButton danger onClick={handleLogout}>
             Đăng xuất
