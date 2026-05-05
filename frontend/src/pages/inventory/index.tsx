@@ -66,7 +66,23 @@ const InventoryPage = () => {
         { title: 'Nhà cung cấp', dataIndex: 'supplier' },
         { title: 'Lô', dataIndex: 'batch' },
         { title: 'Hạn dùng', dataIndex: 'nearest_expiry', render: (v: string) => v ? formatDate(v) : '' },
-        { title: 'Tồn', dataIndex: 'stock_pieces' },
+        {
+          title: 'Tồn', dataIndex: 'stock_pieces',
+          render: (val: number, record: any) => {
+            const total = Number(val) || 0;
+            const upc = Number(record.units_per_carton) || 0;
+            const unitLabel = record.small_unit?.label || '';
+            if (upc > 1 && total > 0) {
+              const cartons = Math.floor(total / upc);
+              const pieces = total - cartons * upc;
+              const parts: string[] = [];
+              if (cartons > 0) parts.push(`${formatNumber(cartons)} Kiện × ${upc}`);
+              if (pieces > 0) parts.push(`${formatNumber(pieces)} ${unitLabel}`);
+              return `${parts.join(' + ')} = ${formatNumber(total)} ${unitLabel}`;
+            }
+            return `${formatNumber(total)} ${unitLabel}`;
+          },
+        },
       ],
       dataSource,
       `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
