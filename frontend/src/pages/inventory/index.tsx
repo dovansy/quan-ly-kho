@@ -1,7 +1,7 @@
 import { AppButton } from '@/components/atoms/AppButton';
 import { AppInput } from '@/components/atoms/AppInput';
 import { AppSelect } from '@/components/atoms/AppSelect';
-import { AppTable } from '@/components/atoms/AppTable/AppTable';
+import { TableSection } from '@/components/organisms/table-section/TableSection';
 import { useGetInventory, useGetInventoryFilters } from '@/hooks/api/inventory';
 import useDebounce from '@/hooks/useDebounce';
 import { sttColumn } from '@/utils/tableColumns';
@@ -27,7 +27,12 @@ const InventoryPage = () => {
   const { data: filtersRes } = useGetInventoryFilters(selectedWithKeyword);
 
   const dataSource = inventoryRes?.data || [];
-  const filterOptions = filtersRes?.data || { warehouses: [], categories: [], suppliers: [], batches: [] };
+  const filterOptions = filtersRes?.data || {
+    warehouses: [],
+    categories: [],
+    suppliers: [],
+    batches: [],
+  };
 
   const handleSelectChange = (field: string, value: any) => {
     setSelected(prev => {
@@ -65,9 +70,14 @@ const InventoryPage = () => {
         { title: 'Loại sản phẩm', dataIndex: 'category' },
         { title: 'Nhà cung cấp', dataIndex: 'supplier' },
         { title: 'Lô', dataIndex: 'batch' },
-        { title: 'Hạn dùng', dataIndex: 'nearest_expiry', render: (v: string) => v ? formatDate(v) : '' },
         {
-          title: 'Tồn', dataIndex: 'stock_pieces',
+          title: 'Hạn dùng',
+          dataIndex: 'nearest_expiry',
+          render: (v: string) => (v ? formatDate(v) : ''),
+        },
+        {
+          title: 'Tồn',
+          dataIndex: 'stock_pieces',
           render: (val: number, record: any) => {
             const total = Number(val) || 0;
             const upc = Number(record.units_per_carton) || 0;
@@ -86,33 +96,43 @@ const InventoryPage = () => {
       ],
       dataSource,
       `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
-      'Ton kho',
+      'Ton kho'
     );
   };
 
   const columns = [
     sttColumn,
     {
-      title: 'Tên sản phẩm', dataIndex: 'product_name', key: 'product_name',
+      title: 'Tên sản phẩm',
+      dataIndex: 'product_name',
+      key: 'product_name',
       render: (text: string, record: any) => (
         <div>
           <div className="font-bold">{text}</div>
-          {record.small_unit?.label && <div className="text-xs text-gray-500">{record.small_unit.label}</div>}
+          {record.small_unit?.label && (
+            <div className="text-xs text-gray-500">{record.small_unit.label}</div>
+          )}
         </div>
       ),
     },
     { title: 'Kho', dataIndex: 'warehouse_name', key: 'warehouse_name' },
     {
-      title: 'Loại', dataIndex: 'category', key: 'category',
-      render: (t: string) => t ? <Tag color="blue">{t}</Tag> : '-',
+      title: 'Loại',
+      dataIndex: 'category',
+      key: 'category',
+      render: (t: string) => (t ? <Tag color="blue">{t}</Tag> : '-'),
     },
     { title: 'Nhà cung cấp', dataIndex: 'supplier', key: 'supplier' },
     {
-      title: 'Lô', dataIndex: 'batch', key: 'batch',
+      title: 'Lô',
+      dataIndex: 'batch',
+      key: 'batch',
       render: (t: string) => <Tag color="geekblue">{t}</Tag>,
     },
     {
-      title: 'Hạn dùng gần nhất', dataIndex: 'nearest_expiry', key: 'nearest_expiry',
+      title: 'Hạn dùng gần nhất',
+      dataIndex: 'nearest_expiry',
+      key: 'nearest_expiry',
       align: 'center' as const,
       render: (date: string) => {
         if (!date) return '-';
@@ -124,7 +144,9 @@ const InventoryPage = () => {
       },
     },
     {
-      title: 'Tồn', dataIndex: 'stock_pieces', key: 'stock_pieces',
+      title: 'Tồn',
+      dataIndex: 'stock_pieces',
+      key: 'stock_pieces',
       align: 'right' as const,
       render: (val: number, record: any) => {
         const total = Number(val) || 0;
@@ -138,7 +160,10 @@ const InventoryPage = () => {
           if (pieces > 0) parts.push(`${formatNumber(pieces)} ${unitLabel}`);
           return (
             <span>
-              {parts.join(' + ')} <span className="text-gray-400">= {formatNumber(total)} {unitLabel}</span>
+              {parts.join(' + ')}{' '}
+              <span className="text-gray-400">
+                = {formatNumber(total)} {unitLabel}
+              </span>
             </span>
           );
         }
@@ -155,40 +180,56 @@ const InventoryPage = () => {
             <Col xs={24} sm={12} md={6}>
               <Form.Item name="warehouse_id" label="Kho">
                 <AppSelect
-                  allowClear showSearch placeholder="Chọn kho"
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  allowClear
+                  showSearch
+                  placeholder="Chọn kho"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                   options={filterOptions.warehouses}
-                  onChange={(val) => handleSelectChange('warehouse_id', val)}
+                  onChange={val => handleSelectChange('warehouse_id', val)}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={6}>
               <Form.Item name="category" label="Loại">
                 <AppSelect
-                  allowClear showSearch placeholder="Chọn loại"
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  allowClear
+                  showSearch
+                  placeholder="Chọn loại"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                   options={filterOptions.categories}
-                  onChange={(val) => handleSelectChange('category', val)}
+                  onChange={val => handleSelectChange('category', val)}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={6}>
               <Form.Item name="supplier" label="Nhà cung cấp">
                 <AppSelect
-                  allowClear showSearch placeholder="Chọn NCC"
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  allowClear
+                  showSearch
+                  placeholder="Chọn NCC"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                   options={filterOptions.suppliers}
-                  onChange={(val) => handleSelectChange('supplier', val)}
+                  onChange={val => handleSelectChange('supplier', val)}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={6}>
               <Form.Item name="batch" label="Lô">
                 <AppSelect
-                  allowClear showSearch placeholder="Chọn lô"
-                  filterOption={(input, option) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())}
+                  allowClear
+                  showSearch
+                  placeholder="Chọn lô"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                  }
                   options={filterOptions.batches}
-                  onChange={(val) => handleSelectChange('batch', val)}
+                  onChange={val => handleSelectChange('batch', val)}
                 />
               </Form.Item>
             </Col>
@@ -196,17 +237,30 @@ const InventoryPage = () => {
           <Row gutter={[24, 16]} align="bottom">
             <Col xs={24} md={16}>
               <Form.Item name="keyword" label="Tìm kiếm nhanh" className="mb-0">
-                <AppInput placeholder="Nhập tên sản phẩm..." prefix={<FiSearch />}
-                  onChange={(e) => setKeywordInput(e.target.value)} />
+                <AppInput
+                  placeholder="Nhập tên sản phẩm..."
+                  prefix={<FiSearch />}
+                  onChange={e => setKeywordInput(e.target.value)}
+                />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
               <div className="flex justify-end">
                 <Space size="middle">
-                  <AppButton onClick={onClear} icon={<FiRotateCcw />} variant="outlined" type="default">
+                  <AppButton
+                    onClick={onClear}
+                    icon={<FiRotateCcw />}
+                    variant="outlined"
+                    type="default"
+                  >
                     Xóa bộ lọc
                   </AppButton>
-                  <AppButton type="primary" htmlType="submit" icon={<FiSearch />} loading={isLoading}>
+                  <AppButton
+                    type="primary"
+                    htmlType="submit"
+                    icon={<FiSearch />}
+                    loading={isLoading}
+                  >
                     Tìm kiếm
                   </AppButton>
                 </Space>
@@ -216,23 +270,19 @@ const InventoryPage = () => {
         </Form>
       </div>
 
-      <div className="p-6 bg-white rounded-lg shadow-sm table-section">
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-lg font-medium summary">
-            Số dòng tồn: <span className="text-primary">{dataSource.length}</span>
-          </div>
+      <TableSection
+        totalLabel="Số sản phẩm tồn"
+        totalCount={dataSource.length}
+        extraActions={
           <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
             Xuất Excel
           </AppButton>
-        </div>
-        <AppTable
-          columns={columns}
-          dataSource={dataSource}
-          loading={isLoading}
-          scroll={{ x: 1200 }}
-          pagination={{ pageSize: 10, total: dataSource.length, showSizeChanger: true }}
-        />
-      </div>
+        }
+        columns={columns}
+        dataSource={dataSource}
+        loading={isLoading}
+        scroll={{ x: 1200 }}
+      />
     </div>
   );
 };

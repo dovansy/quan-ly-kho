@@ -55,7 +55,7 @@ export const TableSection = <T extends object>({
         loading={loading}
         scroll={scroll}
         pagination={{
-          pageSize,
+          defaultPageSize: pageSize,
           total: totalCount,
           showSizeChanger: true,
         }}

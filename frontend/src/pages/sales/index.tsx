@@ -236,12 +236,12 @@ const SalesPage = () => {
   const onSubmit = () => {
     modalForm.validateFields().then(values => {
       if (lines.length === 0) {
-        message.warning('Phải có ít nhất 1 dòng');
+        message.warning('Phải có ít nhất 1 sản phẩm');
         return;
       }
       for (const l of lines) {
         if (!l.product_id) {
-          message.warning('Chọn SP cho mọi dòng');
+          message.warning('Chọn SP cho mọi sản phẩm');
           return;
         }
         if (l.quantity <= 0) {
@@ -380,7 +380,7 @@ const SalesPage = () => {
       },
     },
     {
-      title: 'Số dòng',
+      title: 'Số sản phẩm',
       key: 'line_count',
       align: 'center' as const,
       render: (_: any, r: SaleOrderRow) => r.items.length,
@@ -558,14 +558,14 @@ const SalesPage = () => {
           </Form.Item>
 
           <div className="flex items-center justify-between pt-2 mt-2 mb-2 border-t">
-            <h4 className="m-0 text-base font-semibold">Danh sách dòng bán</h4>
+            <h4 className="m-0 text-base font-semibold">Danh sách sản phẩm bán</h4>
             <AppButton icon={<FiPlus />} onClick={addLine} type="default">
-              Thêm dòng
+              Thêm sản phẩm
             </AppButton>
           </div>
           {lines.length === 0 && (
             <p className="py-4 text-sm text-center text-gray-400">
-              Chưa có dòng nào — bấm "Thêm dòng" để chọn từ kho.
+              Chưa có sản phẩm nào — bấm "Thêm sản phẩm" để chọn từ kho.
             </p>
           )}
           {lines.map((line, idx) => (
@@ -574,7 +574,7 @@ const SalesPage = () => {
                 <Form.Item label={idx === 0 ? 'Chọn từ tồn kho' : ''} className="mb-1">
                   <AppSelect
                     showSearch
-                    placeholder="Chọn dòng tồn"
+                    placeholder="Chọn sản phẩm tồn"
                     value={line.inventory_id}
                     options={inventoryOptions}
                     filterOption={(i, o) =>

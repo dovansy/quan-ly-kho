@@ -63,6 +63,12 @@ export function exportToExcel(
   const firstColStyle = {
     font: bodyFont,
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
   };
   for (let r = 1; r <= rows.length; r++) {
     for (let c = 0; c < headers.length; c++) {
