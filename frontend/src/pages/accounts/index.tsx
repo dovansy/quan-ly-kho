@@ -1,4 +1,4 @@
-import { AppInput } from '@/components/atoms/AppInput';
+import { AppInput, AppPasswordInput } from '@/components/atoms/AppInput';
 import { AppSelect } from '@/components/atoms/AppSelect';
 import { ActionColumn } from '@/components/molecules/action-column';
 import { CrudModal } from '@/components/organisms/crud-modal';
@@ -331,8 +331,7 @@ const AccountsPage = () => {
                     noSpaceRule,
                   ]}
                 >
-                  <AppInput
-                    type="password"
+                  <AppPasswordInput
                     placeholder="Nhập mật khẩu"
                     autoComplete="new-password"
                   />
@@ -354,8 +353,7 @@ const AccountsPage = () => {
                     }),
                   ]}
                 >
-                  <AppInput
-                    type="password"
+                  <AppPasswordInput
                     placeholder="Nhập lại mật khẩu"
                     autoComplete="new-password"
                   />

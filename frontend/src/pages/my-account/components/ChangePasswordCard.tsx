@@ -1,7 +1,7 @@
 import { Card, Col, Divider, Form, Row } from 'antd';
 import { FiLock } from 'react-icons/fi';
 import { AppButton } from '@/components/atoms/AppButton';
-import { AppInput } from '@/components/atoms/AppInput';
+import { AppPasswordInput } from '@/components/atoms/AppInput';
 import { useAppNotification } from '@/components/templates/notification';
 import { useChangePassword } from '@/hooks/api/auth';
 import { noSpaceRule } from '@/utils/validationRules';
@@ -57,8 +57,7 @@ export const ChangePasswordCard = () => {
                 noSpaceRule,
               ]}
             >
-              <AppInput
-                type="password"
+              <AppPasswordInput
                 placeholder="Nhập mật khẩu hiện tại"
                 autoComplete="new-password"
               />
@@ -74,8 +73,7 @@ export const ChangePasswordCard = () => {
                 noSpaceRule,
               ]}
             >
-              <AppInput
-                type="password"
+              <AppPasswordInput
                 placeholder="Nhập mật khẩu mới"
                 autoComplete="new-password"
               />
@@ -97,8 +95,7 @@ export const ChangePasswordCard = () => {
                 }),
               ]}
             >
-              <AppInput
-                type="password"
+              <AppPasswordInput
                 placeholder="Nhập lại mật khẩu mới"
                 autoComplete="new-password"
               />

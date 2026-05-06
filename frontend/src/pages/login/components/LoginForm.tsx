@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FiUser, FiLock } from 'react-icons/fi';
 
 import { AppButton } from '@/components/atoms/AppButton';
-import { AppInput } from '@/components/atoms/AppInput';
+import { AppInput, AppPasswordInput } from '@/components/atoms/AppInput';
 import { AppFormItem } from '@/components/molecules/form-item';
 import { useAppNotification } from '@/components/templates/notification';
 import { ROUTE_PATH } from '@/constants/app';
@@ -14,7 +14,6 @@ import { authService } from '@/services/auth.service';
 import { useAppDispatch } from '@/shared/redux/hooks';
 import { loginSuccess } from '@/store/auth';
 import { noSpaceRule } from '@/utils/validationRules';
-import SuffixPass from './SuffixPass';
 
 interface Props {
   disabled?: boolean;
@@ -22,7 +21,6 @@ interface Props {
 
 const LoginForm = ({ disabled = false }: Props) => {
   const [form] = Form.useForm();
-  const [passwordVisible, setPasswordVisible] = useState(true);
   const [loading, setLoading] = useState(false);
   const { error: notifyError } = useAppNotification();
   const navigate = useNavigate();
@@ -81,19 +79,13 @@ const LoginForm = ({ disabled = false }: Props) => {
             noSpaceRule,
           ]}
         >
-          <AppInput
+          <AppPasswordInput
             prefix={<FiLock className="text-gray-400" />}
             className="password-input"
             id="password"
             name="password"
             autoComplete="current-password"
             placeholder="Mật khẩu"
-            type={passwordVisible ? 'password' : 'text'}
-            suffix={
-              <div onClick={() => setPasswordVisible(!passwordVisible)} className="cursor-pointer">
-                <SuffixPass isVisible={passwordVisible} />
-              </div>
-            }
           />
         </AppFormItem>
 
