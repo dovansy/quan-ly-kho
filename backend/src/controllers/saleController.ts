@@ -50,7 +50,7 @@ export class SaleController {
   };
 
   create = async (req: Request, res: Response): Promise<void> => {
-    const { customerName, customerPhone, customerAddress, saleType, items, paid, saleDate } = req.body;
+    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, saleDate } = req.body;
     const userId = req.user?.userId || null;
 
     if (!Array.isArray(items) || items.length === 0) {
@@ -71,6 +71,7 @@ export class SaleController {
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: customerAddress,
+          broker_name: saleType === 'broker' ? (brokerName || null) : null,
           sale_type: saleType,
           total_amount: totalAmount,
           paid: !!paid,
@@ -108,10 +109,14 @@ export class SaleController {
 
   update = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { customerName, customerPhone, customerAddress, saleType, items, paid, saleDate } = req.body;
+    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, saleDate } = req.body;
 
     const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
+    if (order.returned) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Không thể chỉnh sửa hóa đơn đã hoàn hàng', 400);
+      return;
+    }
 
     if (!Array.isArray(items) || items.length === 0) {
       sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
@@ -132,6 +137,7 @@ export class SaleController {
           customer_name: customerName,
           customer_phone: customerPhone,
           customer_address: customerAddress,
+          broker_name: saleType === 'broker' ? (brokerName || null) : null,
           sale_type: saleType,
           total_amount: totalAmount,
           paid: !!paid,
@@ -168,9 +174,32 @@ export class SaleController {
     const order = await SaleOrder.findByPk(req.params.id);
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
 
-    // CASCADE → trigger se_after_delete sẽ tự cộng trả balance
-    await order.destroy();
+    // MySQL không kích hoạt row-level trigger khi xóa qua FK CASCADE.
+    // Phải xóa stock_exports thủ công để trigger trg_se_after_delete cộng trả tồn,
+    // sau đó mới destroy sale_order. Nếu đơn đã hoàn hàng thì không còn stock_exports
+    // nào để xóa, destroy chỉ còn xóa header.
+    await sequelize.transaction(async (t) => {
+      await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
+      await order.destroy({ transaction: t });
+    });
     sendSuccess(res, null, 'Xóa hóa đơn thành công');
+  };
+
+  returnOrder = async (req: Request, res: Response): Promise<void> => {
+    const order = await SaleOrder.findByPk(req.params.id);
+    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
+    if (order.returned) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Hóa đơn đã được hoàn hàng', 400); return;
+    }
+
+    await sequelize.transaction(async (t) => {
+      // Xóa stock_exports thủ công để trigger trg_se_after_delete cộng trả tồn.
+      await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
+      await order.update({ returned: true, returned_at: new Date() }, { transaction: t });
+    });
+
+    const refreshed = await fetchOrder(order.id);
+    sendSuccess(res, formatOrder(refreshed!), 'Hoàn hàng thành công');
   };
 }
 
@@ -244,10 +273,13 @@ function formatOrder(o: any) {
     customer_name: json.customer_name,
     customer_phone: json.customer_phone,
     customer_address: json.customer_address,
+    broker_name: json.broker_name || null,
     sale_type: json.sale_type,
     total_amount: Number(json.total_amount),
     paid: Boolean(json.paid),
     sale_date: json.sale_date,
+    returned: Boolean(json.returned),
+    returned_at: json.returned_at || null,
     items: (json.items || []).map((i: any) => ({
       id: i.id,
       product_id: i.product_id,

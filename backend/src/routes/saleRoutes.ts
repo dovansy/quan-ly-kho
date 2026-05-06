@@ -18,6 +18,7 @@ export function SaleRoutes(): Router {
   router.get('/', c.list);
   router.post('/', validate(createSaleSchema), c.create);
   router.put('/:id', validate(updateSaleSchema), c.update);
+  router.post('/:id/return', c.returnOrder);
   router.delete('/:id', c.remove);
 
   return router;
