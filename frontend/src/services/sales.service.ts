@@ -23,11 +23,14 @@ export interface Sale {
   customer_name: string;
   customer_phone: string;
   customer_address: string;
+  broker_name: string | null;
   sale_type: string;
   items: SaleItem[];
   total_amount: number;
   paid: boolean;
   sale_date: string;
+  returned: boolean;
+  returned_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -36,6 +39,7 @@ export interface CreateSaleRequest {
   customerName: string;
   customerPhone?: string;
   customerAddress?: string;
+  brokerName?: string;
   saleType: string;
   items: Omit<SaleItem, 'id' | 'warehouse_name' | 'small_unit'>[];
   paid: boolean;
@@ -63,4 +67,7 @@ export const salesService = {
 
   delete: (id: number) =>
     httpClient.delete<APIResponse<null>>(`/sales/${id}`),
+
+  return: (id: number) =>
+    httpClient.post<APIResponse<Sale>>(`/sales/${id}/return`),
 };

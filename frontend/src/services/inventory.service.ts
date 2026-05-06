@@ -12,6 +12,7 @@ export interface InventoryItem {
   supplier: string;
   batch: string;
   stock_pieces: number;
+  units_per_carton: number | null;
   nearest_expiry: string | null;
   small_unit: { id: number; code: string; label: string } | null;
   updated_at: string;

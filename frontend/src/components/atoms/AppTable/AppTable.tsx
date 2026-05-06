@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Table, TableProps } from 'antd';
+import { Empty, Table, TableProps } from 'antd';
 import clsx from 'clsx';
 
 import AppLoading from '../AppLoading';
@@ -12,9 +12,8 @@ export function AppTable<T extends object = object>({
   className,
   loading,
   isFiltering,
-  showHeader,
   ...props
-}: TableProps<T> & { isFiltering?: boolean; showHeader?: boolean }) {
+}: TableProps<T> & { isFiltering?: boolean }) {
   const classNames = clsx(
     className,
     styles.appTable,
@@ -27,15 +26,6 @@ export function AppTable<T extends object = object>({
     '[&_table_tbody.ant-table-tbody>tr.ant-table-placeholder]:bg-transparent',
     '[&_table_thead.ant-table-thead>tr:hover]:bg-[var(--table-row-bg-hover)]'
   );
-
-  const renderEmptyPlace = () => {
-    return (
-      <div className={clsx(className, 'flex flex-col items-center justify-center py-32')}>
-        {/* {isFiltering ? <IconEmptyTable /> : <IconNoData />} */}
-        <p className="mt-4 text-body-2">{isFiltering ? 'No record found' : 'No data'}</p>
-      </div>
-    );
-  };
 
   const paginationOptions = useMemo(() => {
     if (typeof pagination === 'boolean') return pagination;
@@ -55,10 +45,14 @@ export function AppTable<T extends object = object>({
   return (
     <Table
       locale={{
-        emptyText: loading ? <></> : renderEmptyPlace(),
+        emptyText: (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={isFiltering ? 'Không tìm thấy dữ liệu' : 'Không có dữ liệu'}
+          />
+        ),
       }}
       pagination={paginationOptions}
-      showHeader={showHeader || !!props.dataSource?.length}
       className={classNames}
       rowClassName="row"
       loading={

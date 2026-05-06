@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Form } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { FiUser, FiLock } from 'react-icons/fi';
@@ -28,19 +28,6 @@ const LoginForm = ({ disabled = false }: Props) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const setError = useCallback(
-    (name: any, errors: string[] | string) => {
-      const errorMessages = Array.isArray(errors) ? errors : [errors];
-      form.setFields([
-        {
-          name,
-          errors: errorMessages,
-        },
-      ]);
-    },
-    [form]
-  );
-
   const onFinish = async (values: any) => {
     setLoading(true);
     try {
@@ -54,21 +41,15 @@ const LoginForm = ({ disabled = false }: Props) => {
       navigate(ROUTE_PATH.INVENTORY);
     } catch (error) {
       const errorCode: HttpErrorCode = (error as APIErrorResponse).data?.code;
-      const errorMessage = HttpErrorMessage[errorCode];
-      switch (errorCode) {
-        case HttpErrorCode.USER_NOT_FOUND:
-          setError('username', errorMessage);
-          return;
-        case HttpErrorCode.WRONG_PASSWORD:
-          setError('password', errorMessage);
-          return;
-        default:
-          notifyError({
-            message: 'Lỗi',
-            description: errorMessage || HttpErrorMessage[HttpErrorCode.UNKNOWN_ERROR],
-          });
-          return;
-      }
+      const isInvalidCredentials =
+        errorCode === HttpErrorCode.USER_NOT_FOUND || errorCode === HttpErrorCode.WRONG_PASSWORD;
+      const description = isInvalidCredentials
+        ? 'Tên đăng nhập hoặc mật khẩu không chính xác'
+        : HttpErrorMessage[errorCode] || HttpErrorMessage[HttpErrorCode.UNKNOWN_ERROR];
+      notifyError({
+        message: 'Lỗi',
+        description,
+      });
     } finally {
       setLoading(false);
     }

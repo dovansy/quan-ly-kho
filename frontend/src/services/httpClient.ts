@@ -29,9 +29,11 @@ httpClient.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
+      const requestUrl: string = error.config?.url || '';
+      const isLoginRequest = requestUrl.includes('/auth/login');
 
-      // If unauthorized, logout user
-      if (status === 401) {
+      // If unauthorized (and not from the login request itself), logout user
+      if (status === 401 && !isLoginRequest) {
         store.dispatch(logout());
         store.dispatch(setAccessToken(null));
         window.location.href = '/login';

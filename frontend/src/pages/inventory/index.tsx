@@ -5,7 +5,9 @@ import { TableSection } from '@/components/organisms/table-section/TableSection'
 import { useGetInventory, useGetInventoryFilters } from '@/hooks/api/inventory';
 import useDebounce from '@/hooks/useDebounce';
 import { sttColumn } from '@/utils/tableColumns';
-import { formatDate, formatNumber } from '@/utils/format';
+import { renderExpiryTag } from '@/utils/expiry';
+import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
+import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
 import { Col, Form, Row, Space, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -78,20 +80,8 @@ const InventoryPage = () => {
         {
           title: 'Tồn',
           dataIndex: 'stock_pieces',
-          render: (val: number, record: any) => {
-            const total = Number(val) || 0;
-            const upc = Number(record.units_per_carton) || 0;
-            const unitLabel = record.small_unit?.label || '';
-            if (upc > 1 && total > 0) {
-              const cartons = Math.floor(total / upc);
-              const pieces = total - cartons * upc;
-              const parts: string[] = [];
-              if (cartons > 0) parts.push(`${formatNumber(cartons)} Kiện × ${upc}`);
-              if (pieces > 0) parts.push(`${formatNumber(pieces)} ${unitLabel}`);
-              return `${parts.join(' + ')} = ${formatNumber(total)} ${unitLabel}`;
-            }
-            return `${formatNumber(total)} ${unitLabel}`;
-          },
+          render: (val: number, record: any) =>
+            formatCartonPiecesPlain(val, record.units_per_carton, record.small_unit?.label),
         },
       ],
       dataSource,
@@ -130,45 +120,19 @@ const InventoryPage = () => {
       render: (t: string) => <Tag color="geekblue">{t}</Tag>,
     },
     {
-      title: 'Hạn dùng gần nhất',
+      title: 'HSD',
       dataIndex: 'nearest_expiry',
       key: 'nearest_expiry',
       align: 'center' as const,
-      render: (date: string) => {
-        if (!date) return '-';
-        const diff = dayjs(date).diff(dayjs(), 'day');
-        let color = 'processing';
-        if (diff < 0) color = 'error';
-        else if (diff < 30) color = 'warning';
-        return <Tag color={color}>{formatDate(date)}</Tag>;
-      },
+      render: (date: string) => renderExpiryTag(date),
     },
     {
       title: 'Tồn',
       dataIndex: 'stock_pieces',
       key: 'stock_pieces',
       align: 'right' as const,
-      render: (val: number, record: any) => {
-        const total = Number(val) || 0;
-        const upc = Number(record.units_per_carton) || 0;
-        const unitLabel = record.small_unit?.label || '';
-        if (upc > 1 && total > 0) {
-          const cartons = Math.floor(total / upc);
-          const pieces = total - cartons * upc;
-          const parts: string[] = [];
-          if (cartons > 0) parts.push(`${formatNumber(cartons)} Kiện × ${upc}`);
-          if (pieces > 0) parts.push(`${formatNumber(pieces)} ${unitLabel}`);
-          return (
-            <span>
-              {parts.join(' + ')}{' '}
-              <span className="text-gray-400">
-                = {formatNumber(total)} {unitLabel}
-              </span>
-            </span>
-          );
-        }
-        return `${formatNumber(total)} ${unitLabel}`;
-      },
+      render: (val: number, record: any) =>
+        renderCartonPieces(val, record.units_per_carton, record.small_unit?.label),
     },
   ];
 

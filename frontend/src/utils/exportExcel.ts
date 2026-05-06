@@ -53,6 +53,7 @@ export function exportToExcel(
   const bodyFont = { sz: 14, color: { rgb: '000000' } };
   const bodyStyle = {
     font: bodyFont,
+    alignment: { vertical: 'center', wrapText: true },
     border: {
       top: { style: 'thin', color: { rgb: '000000' } },
       bottom: { style: 'thin', color: { rgb: '000000' } },

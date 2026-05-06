@@ -4,13 +4,14 @@ import { ActionColumn } from '@/components/molecules/action-column';
 import { CrudModal } from '@/components/organisms/crud-modal';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { TableSection } from '@/components/organisms/table-section';
+import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import {
   useGetSmallUnits, useCreateSmallUnit, useUpdateSmallUnit, useDeleteSmallUnit,
 } from '@/hooks/api/small-units';
 import { sttColumn } from '@/utils/tableColumns';
-import { Col, Form, Row, Tag, message } from 'antd';
+import { Col, Form, Row, Tag } from 'antd';
 import { useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
@@ -32,6 +33,7 @@ const SmallUnitsPage = () => {
   const create = useCreateSmallUnit();
   const update = useUpdateSmallUnit();
   const remove = useDeleteSmallUnit();
+  const { success, error } = useAppNotification();
 
   const data: SmallUnitRow[] = (res?.data || []) as any;
   const loading = isLoading || create.isPending || update.isPending || remove.isPending;
@@ -57,14 +59,28 @@ const SmallUnitsPage = () => {
   const onSubmit = () => {
     modalForm.validateFields().then(values => {
       if (editing) {
-        update.mutate({ id: editing.id, data: { label: values.label, status: values.status } }, {
-          onSuccess: () => { message.success('Cập nhật đơn vị thành công'); closeModal(); },
-          onError: (e: any) => message.error(e?.response?.data?.message || 'Lỗi cập nhật'),
-        });
+        update.mutate(
+          { id: editing.id, data: { label: values.label, status: values.status } },
+          {
+            onSuccess: () => {
+              success({ message: 'Cập nhật đơn vị thành công' });
+              closeModal();
+            },
+            onError: (e: any) =>
+              error({
+                message: 'Lỗi cập nhật',
+                description: e?.response?.data?.message,
+              }),
+          }
+        );
       } else {
         create.mutate(values, {
-          onSuccess: () => { message.success('Tạo đơn vị thành công'); closeModal(); },
-          onError: (e: any) => message.error(e?.response?.data?.message || 'Lỗi tạo'),
+          onSuccess: () => {
+            success({ message: 'Tạo đơn vị thành công' });
+            closeModal();
+          },
+          onError: (e: any) =>
+            error({ message: 'Lỗi tạo đơn vị', description: e?.response?.data?.message }),
         });
       }
     });
@@ -72,8 +88,9 @@ const SmallUnitsPage = () => {
 
   const onDelete = (r: SmallUnitRow) => {
     remove.mutate(r.id, {
-      onSuccess: () => message.success('Xóa đơn vị thành công'),
-      onError: (e: any) => message.error(e?.response?.data?.message || 'Lỗi xóa'),
+      onSuccess: () => success({ message: 'Xóa đơn vị thành công' }),
+      onError: (e: any) =>
+        error({ message: 'Lỗi xóa', description: e?.response?.data?.message }),
     });
   };
 

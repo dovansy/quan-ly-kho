@@ -176,6 +176,8 @@ Tra ve hoa don kem `items` array.
 
 Ma hoa don tu dong sinh: `HD-YYYYMMDD-XXX`
 
+`items[].quantity` la **tong so don vi le** (sau quy doi kien -> le). Frontend cho user nhap "so kien" + "so le" rieng, tu tinh `quantity = carton * units_per_carton + piece` truoc khi gui — backend chi nhan `quantity`. `units_per_carton` cua lo lay tu response `GET /inventory` (subquery tu `stock_imports` moi nhat).
+
 ```json
 {
   "customerName": "Nguyen Van A",
@@ -185,11 +187,15 @@ Ma hoa don tu dong sinh: `HD-YYYYMMDD-XXX`
   "saleDate": "2024-03-15",
   "items": [
     {
-      "productName": "Paracetamol 500mg",
-      "quantity": 10,
-      "unit": "hop",
-      "unitPrice": 1500,
-      "total": 15000
+      "product_id": 12,
+      "product_name": "Paracetamol 500mg",
+      "warehouse_id": 1,
+      "supplier": "NCC A",
+      "batch": "B-202403",
+      "small_unit_id": 3,
+      "quantity": 245,
+      "unit_price": 1500,
+      "total": 367500
     }
   ]
 }

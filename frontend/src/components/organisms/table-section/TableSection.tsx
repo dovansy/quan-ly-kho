@@ -15,6 +15,7 @@ interface TableSectionProps<T = any> extends Pick<
   onAdd?: () => void;
   extraActions?: ReactNode;
   pageSize?: number;
+  isFiltering?: boolean;
 }
 
 export const TableSection = <T extends object>({
@@ -29,6 +30,7 @@ export const TableSection = <T extends object>({
   loading,
   scroll,
   pageSize = 10,
+  isFiltering,
 }: TableSectionProps<T>) => {
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm table-section">
@@ -54,6 +56,7 @@ export const TableSection = <T extends object>({
         dataSource={dataSource}
         loading={loading}
         scroll={scroll}
+        isFiltering={isFiltering}
         pagination={{
           defaultPageSize: pageSize,
           total: totalCount,

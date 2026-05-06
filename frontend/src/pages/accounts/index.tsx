@@ -4,12 +4,13 @@ import { ActionColumn } from '@/components/molecules/action-column';
 import { CrudModal } from '@/components/organisms/crud-modal';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { TableSection } from '@/components/organisms/table-section';
+import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels, roleLabels, roleOptions } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import { useGetAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/api/accounts';
 import { useAppSelector } from '@/shared/redux/hooks';
 import { sttColumn } from '@/utils/tableColumns';
-import { Col, Form, Row, Tag, Tooltip, message } from 'antd';
+import { Col, Form, Row, Tag, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { noSpaceRule } from '@/utils/validationRules';
@@ -39,6 +40,7 @@ const AccountsPage = () => {
   const createMutation = useCreateAccount();
   const updateMutation = useUpdateAccount();
   const deleteMutation = useDeleteAccount();
+  const { success, error } = useAppNotification();
 
   const dataSource: Account[] = useMemo(
     () => (accountsRes?.data || []).map((item: any) => ({
@@ -91,24 +93,45 @@ const AccountsPage = () => {
         const { fullName, email, phone, status, role } = values;
         const payload: Record<string, unknown> = { fullName, email, phone, status };
         if (isSuperAdmin && role !== editingItem.role) payload.role = role;
-        updateMutation.mutate({ id: editingItem.id, data: payload }, {
-          onSuccess: () => { message.success('Cập nhật tài khoản thành công'); closeModal(); },
-          onError: (err: any) => message.error(err?.data?.message || 'Cập nhật tài khoản thất bại'),
-        });
+        updateMutation.mutate(
+          { id: editingItem.id, data: payload },
+          {
+            onSuccess: () => {
+              success({ message: 'Cập nhật tài khoản thành công' });
+              closeModal();
+            },
+            onError: (err: any) =>
+              error({
+                message: 'Cập nhật tài khoản thất bại',
+                description: err?.data?.message,
+              }),
+          }
+        );
       } else {
         const { fullName, username, email, phone, password } = values;
-        createMutation.mutate({ fullName, username, email, phone, password, role: 'admin' }, {
-          onSuccess: () => { message.success('Thêm tài khoản thành công'); closeModal(); },
-          onError: (err: any) => message.error(err?.data?.message || 'Thêm tài khoản thất bại'),
-        });
+        createMutation.mutate(
+          { fullName, username, email, phone, password, role: 'admin' },
+          {
+            onSuccess: () => {
+              success({ message: 'Thêm tài khoản thành công' });
+              closeModal();
+            },
+            onError: (err: any) =>
+              error({
+                message: 'Thêm tài khoản thất bại',
+                description: err?.data?.message,
+              }),
+          }
+        );
       }
     });
   };
 
   const handleDelete = (record: Account) => {
     deleteMutation.mutate(record.id, {
-      onSuccess: () => message.success('Xóa tài khoản thành công'),
-      onError: (err: any) => message.error(err?.data?.message || 'Xóa tài khoản thất bại'),
+      onSuccess: () => success({ message: 'Xóa tài khoản thành công' }),
+      onError: (err: any) =>
+        error({ message: 'Xóa tài khoản thất bại', description: err?.data?.message }),
     });
   };
 

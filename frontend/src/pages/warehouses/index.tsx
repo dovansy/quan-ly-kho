@@ -4,12 +4,13 @@ import { ActionColumn } from '@/components/molecules/action-column';
 import { CrudModal } from '@/components/organisms/crud-modal';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { TableSection } from '@/components/organisms/table-section';
+import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import { useGetWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/hooks/api/warehouses';
 import { sttColumn } from '@/utils/tableColumns';
 import { formatNumber } from '@/utils/format';
-import { Col, Form, Row, Tag, message } from 'antd';
+import { Col, Form, Row, Tag } from 'antd';
 import { useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
 
@@ -34,6 +35,7 @@ const WarehousesPage = () => {
   const createMutation = useCreateWarehouse();
   const updateMutation = useUpdateWarehouse();
   const deleteMutation = useDeleteWarehouse();
+  const { success, error } = useAppNotification();
 
   const filteredData: Warehouse[] = (warehousesRes?.data || []).map((w: any) => ({
     ...w,
@@ -75,14 +77,23 @@ const WarehousesPage = () => {
   const onSubmit = () => {
     modalForm.validateFields().then(values => {
       if (editingRecord) {
-        updateMutation.mutate({ id: editingRecord.id, data: values }, {
-          onSuccess: () => { message.success('Cập nhật kho thành công'); closeModal(); },
-          onError: () => message.error('Cập nhật kho thất bại'),
-        });
+        updateMutation.mutate(
+          { id: editingRecord.id, data: values },
+          {
+            onSuccess: () => {
+              success({ message: 'Cập nhật kho thành công' });
+              closeModal();
+            },
+            onError: () => error({ message: 'Cập nhật kho thất bại' }),
+          }
+        );
       } else {
         createMutation.mutate(values, {
-          onSuccess: () => { message.success('Thêm kho thành công'); closeModal(); },
-          onError: () => message.error('Thêm kho thất bại'),
+          onSuccess: () => {
+            success({ message: 'Thêm kho thành công' });
+            closeModal();
+          },
+          onError: () => error({ message: 'Thêm kho thất bại' }),
         });
       }
     });
@@ -90,8 +101,8 @@ const WarehousesPage = () => {
 
   const handleDelete = (record: Warehouse) => {
     deleteMutation.mutate(record.id, {
-      onSuccess: () => message.success('Xóa kho thành công'),
-      onError: () => message.error('Xóa kho thất bại'),
+      onSuccess: () => success({ message: 'Xóa kho thành công' }),
+      onError: () => error({ message: 'Xóa kho thất bại' }),
     });
   };
 

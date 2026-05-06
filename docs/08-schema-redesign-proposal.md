@@ -170,6 +170,26 @@ Rename từ `sales`, giữ gần nguyên.
 
 Frontend sales form: user chọn từ dropdown `GET /inventory?stock>0` → tự fill `product_id, warehouse_id, supplier, batch, small_unit_id`.
 
+#### Bán theo kiện + lẻ (UI flow)
+
+Schema `stock_exports` chỉ lưu duy nhất `quantity` (tổng số lẻ) làm source of truth — KHÔNG thêm `carton_quantity / units_per_carton`. Lý do: `units_per_carton` của một lô đã được lưu ở `stock_imports` (lần nhập gần nhất theo `import_date DESC`), `inventory` API trả kèm field này nên frontend đủ thông tin để render và quy đổi.
+
+**Modal "Tạo hóa đơn xuất hàng" (`frontend/src/pages/sales/index.tsx`)** mỗi dòng có:
+
+| Input | Mô tả |
+|---|---|
+| Chọn từ tồn kho | Dropdown `GET /inventory` — trả kèm `units_per_carton` (lần nhập mới nhất của lô) |
+| Số kiện | User nhập số kiện muốn bán; label hiển thị `(1 kiện = X)` để gợi ý quy cách |
+| Số lẻ | User nhập số lẻ ngoài kiện (vd bóc 1 kiện ra bán 5 hộp lẻ) |
+| Đơn giá | Đơn giá / 1 đơn vị lẻ |
+| Thành tiền | `quantity * unit_price`, có dòng phụ "Tổng: N hộp" |
+
+Frontend tự tính `quantity = carton_quantity * units_per_carton + piece_quantity` mỗi khi user thay đổi 1 trong 2 ô, validate `quantity ≤ stock_pieces`, rồi gửi backend duy nhất `quantity` (số lẻ tổng). Backend không thay đổi.
+
+**Edit hóa đơn cũ:** auto-convert ngược `it.quantity → (carton, piece)` theo `units_per_carton` hiện tại của lô: `carton = floor(quantity / units_per_carton)`, `piece = quantity % units_per_carton`.
+
+**Hiển thị tồn (`pages/inventory/index.tsx`):** vẫn render dạng "X Kiện × Y + Z lẻ" tự tính từ `stock_pieces / units_per_carton` (Y cố định theo lô). Vì `units_per_carton` cố định, sau mỗi lần bán (dù bóc kiện), tồn sẽ tự re-render về đúng quy cách ban đầu.
+
 ### 4.6. `inventory_balance` (TỒN KHO — bảng vật lý + trigger)
 
 | Cột | Kiểu | Null | Ý nghĩa |

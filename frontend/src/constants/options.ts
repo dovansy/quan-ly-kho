@@ -15,7 +15,7 @@ export const statusLabels: Record<string, { label: string; color: string }> = {
 export const saleTypeOptions = [
   { label: 'Bán buôn', value: SaleType.WHOLESALE },
   { label: 'Bán lẻ', value: SaleType.RETAIL },
-  { label: 'Bán cho nhà môi giới', value: SaleType.BROKER },
+  { label: 'Bán qua Nhà môi giới', value: SaleType.BROKER },
 ];
 
 export const saleTypeLabels: Record<string, { label: string; color: string }> = {

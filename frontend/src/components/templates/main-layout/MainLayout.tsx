@@ -2,6 +2,7 @@ import { Layout } from 'antd';
 import { ReactNode } from 'react';
 
 import Header from '@/components/organisms/header';
+import './MainLayout.scss';
 
 const { Content, Sider } = Layout;
 
