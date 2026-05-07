@@ -6,17 +6,33 @@ import { renderCartonPieces } from '@/utils/quantity';
 import { sttColumn } from '@/utils/tableColumns';
 import { ImportRecord } from '../types';
 
+type SortableField = 'product_name' | 'warehouse_name' | 'expiry_date' | 'import_date';
+type AntSortOrder = 'ascend' | 'descend' | null;
+
 interface Params {
   onEdit: (r: ImportRecord) => void;
   onDelete: (r: ImportRecord) => void;
+  sortBy?: SortableField;
+  sortOrder?: 'asc' | 'desc';
 }
 
-export const useImportListColumns = ({ onEdit, onDelete }: Params) => [
+const getSortOrder = (
+  field: SortableField,
+  sortBy?: SortableField,
+  sortOrder?: 'asc' | 'desc'
+): AntSortOrder => {
+  if (sortBy !== field) return null;
+  return sortOrder === 'asc' ? 'ascend' : 'descend';
+};
+
+export const useImportListColumns = ({ onEdit, onDelete, sortBy, sortOrder }: Params) => [
   sttColumn,
   {
     title: 'Tên SP',
     dataIndex: 'product_name',
     key: 'product_name',
+    sorter: true,
+    sortOrder: getSortOrder('product_name', sortBy, sortOrder),
     render: (t: string) => <span className="font-bold">{t}</span>,
   },
   {
@@ -25,7 +41,13 @@ export const useImportListColumns = ({ onEdit, onDelete }: Params) => [
     key: 'category',
     render: (t: string) => (t ? <Tag color="blue">{t}</Tag> : '-'),
   },
-  { title: 'Kho', dataIndex: 'warehouse_name', key: 'warehouse_name' },
+  {
+    title: 'Kho',
+    dataIndex: 'warehouse_name',
+    key: 'warehouse_name',
+    sorter: true,
+    sortOrder: getSortOrder('warehouse_name', sortBy, sortOrder),
+  },
   { title: 'NCC', dataIndex: 'supplier', key: 'supplier' },
   {
     title: 'Lô',
@@ -45,6 +67,8 @@ export const useImportListColumns = ({ onEdit, onDelete }: Params) => [
     dataIndex: 'expiry_date',
     key: 'expiry_date',
     align: 'center' as const,
+    sorter: true,
+    sortOrder: getSortOrder('expiry_date', sortBy, sortOrder),
     render: (d: string) => renderExpiryTag(d),
   },
   {
@@ -52,6 +76,8 @@ export const useImportListColumns = ({ onEdit, onDelete }: Params) => [
     dataIndex: 'import_date',
     key: 'import_date',
     align: 'center' as const,
+    sorter: true,
+    sortOrder: getSortOrder('import_date', sortBy, sortOrder),
     render: (d: string) => (d ? formatDate(d) : '-'),
   },
   { title: 'Người nhập', dataIndex: 'imported_by', key: 'imported_by' },

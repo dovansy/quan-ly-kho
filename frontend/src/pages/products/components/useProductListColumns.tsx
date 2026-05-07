@@ -4,16 +4,24 @@ import { statusLabels } from '@/constants/options';
 import { sttColumn } from '@/utils/tableColumns';
 import { ProductRow } from '../types';
 
+type AntSortOrder = 'ascend' | 'descend' | null;
+
 interface Params {
   onEdit: (r: ProductRow) => void;
+  sortBy?: 'name';
+  sortOrder?: 'asc' | 'desc';
 }
 
-export const useProductListColumns = ({ onEdit }: Params) => [
+export const useProductListColumns = ({ onEdit, sortBy, sortOrder }: Params) => [
   sttColumn,
   {
     title: 'Tên SP',
     dataIndex: 'name',
     key: 'name',
+    sorter: true,
+    sortOrder: (sortBy === 'name'
+      ? sortOrder === 'asc' ? 'ascend' : 'descend'
+      : null) as AntSortOrder,
     render: (t: string) => <span className="font-bold">{t}</span>,
   },
   {

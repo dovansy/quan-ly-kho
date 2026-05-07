@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, type TableProps } from 'antd';
 import { useEffect, useState } from 'react';
 import { TableSection } from '@/components/organisms/table-section';
 import { useGetProductCategories, useGetProducts } from '@/hooks/api/products';
@@ -14,8 +14,9 @@ const ProductsPage = () => {
   const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ProductRow | null>(null);
+  const [sort, setSort] = useState<{ sort_by?: 'name'; sort_order?: 'asc' | 'desc' }>({});
 
-  const { data: res, isLoading } = useGetProducts(filters);
+  const { data: res, isLoading } = useGetProducts({ ...filters, ...sort });
   const { data: catRes } = useGetProductCategories();
   const { data: smallUnitsRes } = useGetSmallUnitOptions();
 
@@ -37,6 +38,21 @@ const ProductsPage = () => {
   const onClear = () => {
     filterForm.resetFields();
     clearFilters();
+    setSort({});
+  };
+
+  const { sort_by: sortBy, sort_order: sortOrder } = sort;
+
+  const handleTableChange: TableProps<any>['onChange'] = (_pag, _filt, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (s && s.order && s.field === 'name') {
+      setSort({
+        sort_by: 'name',
+        sort_order: s.order === 'ascend' ? 'asc' : 'desc',
+      });
+    } else {
+      setSort({});
+    }
   };
 
   const openEdit = (r: ProductRow) => {
@@ -49,7 +65,7 @@ const ProductsPage = () => {
     setEditing(null);
   };
 
-  const columns = useProductListColumns({ onEdit: openEdit });
+  const columns = useProductListColumns({ onEdit: openEdit, sortBy, sortOrder });
 
   return (
     <div className="products-page">
@@ -75,6 +91,7 @@ const ProductsPage = () => {
         columns={columns}
         dataSource={data.map(d => ({ ...d, key: String(d.id) }))}
         loading={isLoading}
+        onChange={handleTableChange}
       />
 
       <ProductFormModal

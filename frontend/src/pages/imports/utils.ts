@@ -4,6 +4,9 @@ import { formatDate } from '@/utils/format';
 import { ImportRecord } from './types';
 
 export const exportImportsExcel = (data: ImportRecord[]) => {
+  const sorted = [...data].sort((a, b) =>
+    (a.product_name || '').localeCompare(b.product_name || '', 'vi')
+  );
   exportToExcel(
     [
       { title: 'STT', dataIndex: 'index' },
@@ -29,7 +32,7 @@ export const exportImportsExcel = (data: ImportRecord[]) => {
       },
       { title: 'Người nhập', dataIndex: 'imported_by' },
     ],
-    data,
+    sorted,
     `Nhap_hang_${dayjs().format('YYYYMMDD_HHmmss')}`,
     'Nhap hang'
   );

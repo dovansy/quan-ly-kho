@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, type TableProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
@@ -18,6 +18,9 @@ import { useSaleListColumns } from './components/useSaleListColumns';
 import { mapSale, SaleOrderRow } from './types';
 import { exportSalesExcel } from './utils';
 
+const SORTABLE_SALES = ['customer_name', 'status', 'sale_date', 'total_amount'] as const;
+type SortableSaleField = (typeof SORTABLE_SALES)[number];
+
 const SalesPage = () => {
   const [filterForm] = Form.useForm();
   const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
@@ -26,8 +29,9 @@ const SalesPage = () => {
   const [defaultSaleType, setDefaultSaleType] = useState<string | undefined>(undefined);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewing, setViewing] = useState<SaleOrderRow | null>(null);
+  const [sort, setSort] = useState<{ sort_by?: SortableSaleField; sort_order?: 'asc' | 'desc' }>({});
 
-  const { data: salesRes, isLoading } = useGetSales(filters);
+  const { data: salesRes, isLoading } = useGetSales({ ...filters, ...sort });
   const { data: inventoryRes } = useGetInventory();
   const remove = useDeleteSale();
   const returnSale = useReturnSale();
@@ -67,6 +71,21 @@ const SalesPage = () => {
   const onClear = () => {
     filterForm.resetFields();
     clearFilters();
+    setSort({});
+  };
+
+  const { sort_by: sortBy, sort_order: sortOrder } = sort;
+
+  const handleTableChange: TableProps<any>['onChange'] = (_pag, _filt, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (s && s.order && SORTABLE_SALES.includes(s.field as SortableSaleField)) {
+      setSort({
+        sort_by: s.field as SortableSaleField,
+        sort_order: s.order === 'ascend' ? 'asc' : 'desc',
+      });
+    } else {
+      setSort({});
+    }
   };
 
   const openCreate = (saleType: string) => {
@@ -120,6 +139,8 @@ const SalesPage = () => {
     onEdit: openEdit,
     onDelete,
     onReturn,
+    sortBy,
+    sortOrder,
   });
 
   return (
@@ -147,6 +168,7 @@ const SalesPage = () => {
         dataSource={data}
         loading={loading}
         scroll={{ x: 1200 }}
+        onChange={handleTableChange}
       />
 
       <SaleFormModal

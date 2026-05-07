@@ -307,18 +307,28 @@ export const SaleFormModal = ({
             Chưa có sản phẩm nào — bấm "Thêm sản phẩm" để chọn từ kho.
           </p>
         )}
-        {lines.map((line, idx) => (
-          <SaleLineRow
-            key={idx}
-            idx={idx}
-            isFirst={idx === 0}
-            line={line}
-            inventoryOptions={inventoryOptions}
-            onPick={onPickInventory}
-            onUpdate={updateLine}
-            onRemove={removeLine}
-          />
-        ))}
+        {lines.map((line, idx) => {
+          const usedProductNames = new Set(
+            lines
+              .filter((l, i) => i !== idx && l.product_name)
+              .map(l => l.product_name)
+          );
+          const optsForThisLine = inventoryOptions.filter(
+            o => !usedProductNames.has(o.record.product_name)
+          );
+          return (
+            <SaleLineRow
+              key={idx}
+              idx={idx}
+              isFirst={idx === 0}
+              line={line}
+              inventoryOptions={optsForThisLine}
+              onPick={onPickInventory}
+              onUpdate={updateLine}
+              onRemove={removeLine}
+            />
+          );
+        })}
         {lines.length > 0 && (
           <div className="text-lg font-bold text-right">
             Tổng:{' '}

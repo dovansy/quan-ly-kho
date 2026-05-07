@@ -35,6 +35,14 @@ export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) =
     }));
   });
 
+  const cmp = (x: string, y: string) =>
+    (x || '').trim().localeCompare((y || '').trim(), 'vi', { sensitivity: 'base', numeric: true });
+  flat.sort((a, b) => {
+    const byCustomer = cmp(a.customer_name, b.customer_name);
+    if (byCustomer !== 0) return byCustomer;
+    return cmp(a.product_name, b.product_name);
+  });
+
   exportToExcel(
     [
       { title: 'STT', dataIndex: 'index' },
@@ -73,7 +81,10 @@ export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) =
  * `items` cần đã được enrich `units_per_carton` (theo lô tồn kho hiện tại).
  */
 export const exportSaleDetailExcel = (_order: SaleOrderRow, items: SaleLine[]) => {
-  const rows = items.map((l, i) => ({
+  const sortedItems = [...items].sort((a, b) =>
+    (a.product_name || '').localeCompare(b.product_name || '', 'vi')
+  );
+  const rows = sortedItems.map((l, i) => ({
     index: i + 1,
     product_name: l.product_name,
     warehouse_name: l.warehouse_name,
@@ -88,7 +99,7 @@ export const exportSaleDetailExcel = (_order: SaleOrderRow, items: SaleLine[]) =
   exportToExcel(
     [
       { title: 'STT', dataIndex: 'index' },
-      { title: 'Sản phẩm', dataIndex: 'product_name' },
+      { title: 'Tên sản phẩm', dataIndex: 'product_name' },
       { title: 'Kho', dataIndex: 'warehouse_name' },
       { title: 'NCC', dataIndex: 'supplier' },
       { title: 'Lô', dataIndex: 'batch' },
@@ -98,7 +109,7 @@ export const exportSaleDetailExcel = (_order: SaleOrderRow, items: SaleLine[]) =
       { title: 'Thành tiền (vnđ)', dataIndex: 'total', render: renderCurrencyCell },
     ],
     rows,
-    `HoaDon_${dayjs().format('YYYYMMDD_HHmmss')}`,
+    `HoaDon_${_order.customer_name}_${dayjs().format('YYYYMMDD_HHmmss')}`,
     'Hoa don'
   );
 };

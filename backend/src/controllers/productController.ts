@@ -11,7 +11,7 @@ export class ProductController {
   getProducts = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
-    const { keyword, category, supplier, status } = req.query as Record<string, string>;
+    const { keyword, category, supplier, status, sort_by, sort_order } = req.query as Record<string, string>;
 
     const where: any = {};
     if (keyword) where.name = { [Op.like]: `%${keyword}%` };
@@ -19,10 +19,16 @@ export class ProductController {
     if (supplier) where.supplier = supplier;
     if (status) where.status = status;
 
+    const dir = (sort_order || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+    let order: any = [['name', 'ASC']];
+    if (sort_by === 'name') {
+      order = [['name', dir]];
+    }
+
     const { count, rows } = await Product.findAndCountAll({
       where,
       include: [{ model: SmallUnit, as: 'defaultSmallUnit' }],
-      order: [['name', 'ASC']],
+      order,
       limit,
       offset: (page - 1) * limit,
     });

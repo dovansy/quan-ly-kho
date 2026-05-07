@@ -6,7 +6,7 @@ import { FiPlus } from 'react-icons/fi';
 
 interface TableSectionProps<T = any> extends Pick<
   TableProps<T>,
-  'columns' | 'dataSource' | 'loading' | 'scroll'
+  'columns' | 'dataSource' | 'loading' | 'scroll' | 'onChange'
 > {
   totalLabel: string;
   totalCount: number;
@@ -15,6 +15,7 @@ interface TableSectionProps<T = any> extends Pick<
   onAdd?: () => void;
   extraActions?: ReactNode;
   pageSize?: number;
+  current?: number;
   isFiltering?: boolean;
 }
 
@@ -30,8 +31,13 @@ export const TableSection = <T extends object>({
   loading,
   scroll,
   pageSize = 10,
+  current,
   isFiltering,
+  onChange,
 }: TableSectionProps<T>) => {
+  const paginationConfig = current !== undefined
+    ? { current, pageSize, total: totalCount, showSizeChanger: true }
+    : { defaultPageSize: pageSize, total: totalCount, showSizeChanger: true };
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm table-section">
       <div className="flex items-center justify-between mb-4">
@@ -57,11 +63,8 @@ export const TableSection = <T extends object>({
         loading={loading}
         scroll={scroll}
         isFiltering={isFiltering}
-        pagination={{
-          defaultPageSize: pageSize,
-          total: totalCount,
-          showSizeChanger: true,
-        }}
+        onChange={onChange}
+        pagination={paginationConfig}
       />
     </div>
   );

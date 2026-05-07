@@ -9,7 +9,10 @@ export class StockImportController {
   list = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
-    const { keyword, warehouse_id, supplier, batch, importDate, productId } = req.query as Record<string, string>;
+    const {
+      keyword, warehouse_id, supplier, batch, importDate, productId,
+      sort_by, sort_order,
+    } = req.query as Record<string, string>;
 
     const where: any = {};
     if (warehouse_id) where.warehouse_id = Number(warehouse_id);
@@ -21,6 +24,18 @@ export class StockImportController {
     const productWhere: any = {};
     if (keyword) productWhere.name = { [Op.like]: `%${keyword}%` };
 
+    const dir = (sort_order || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+    let order: any = [['import_date', 'DESC'], ['created_at', 'DESC']];
+    if (sort_by === 'product_name') {
+      order = [[{ model: Product, as: 'product' }, 'name', dir]];
+    } else if (sort_by === 'warehouse_name') {
+      order = [[{ model: Warehouse, as: 'warehouse' }, 'name', dir]];
+    } else if (sort_by === 'expiry_date') {
+      order = [['expiry_date', dir]];
+    } else if (sort_by === 'import_date') {
+      order = [['import_date', dir], ['created_at', dir]];
+    }
+
     const { count, rows } = await StockImport.findAndCountAll({
       where,
       include: [
@@ -30,7 +45,7 @@ export class StockImportController {
         { model: SmallUnit, as: 'smallUnit' },
         { model: User, as: 'importer', attributes: ['id', 'username', 'full_name'] },
       ],
-      order: [['import_date', 'DESC'], ['created_at', 'DESC']],
+      order,
       limit,
       offset: (page - 1) * limit,
     });

@@ -25,6 +25,8 @@ export interface InventoryFilters {
   supplier?: string;
   batch?: string;
   includeEmpty?: boolean;
+  sort_by?: 'product_name' | 'warehouse_name' | 'nearest_expiry';
+  sort_order?: 'asc' | 'desc';
 }
 
 export interface InventoryFilterOptions {

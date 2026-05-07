@@ -1,4 +1,4 @@
-import { Form } from 'antd';
+import { Form, type TableProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
@@ -19,13 +19,17 @@ import { useImportListColumns } from './components/useImportListColumns';
 import { ImportRecord } from './types';
 import { exportImportsExcel } from './utils';
 
+const SORTABLE_IMPORTS = ['product_name', 'warehouse_name', 'expiry_date', 'import_date'] as const;
+type SortableImportField = (typeof SORTABLE_IMPORTS)[number];
+
 const ImportsPage = () => {
   const [filterForm] = Form.useForm();
   const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ImportRecord | null>(null);
+  const [sort, setSort] = useState<{ sort_by?: SortableImportField; sort_order?: 'asc' | 'desc' }>({});
 
-  const { data: importsRes, isLoading } = useGetImports(filters);
+  const { data: importsRes, isLoading } = useGetImports({ ...filters, ...sort });
   const { data: warehouseListRes } = useGetWarehouseList();
   const { data: smallUnitsRes } = useGetSmallUnitOptions();
   const { data: catRes } = useGetProductCategories();
@@ -70,6 +74,21 @@ const ImportsPage = () => {
   const onClear = () => {
     filterForm.resetFields();
     clearFilters();
+    setSort({});
+  };
+
+  const { sort_by: sortBy, sort_order: sortOrder } = sort;
+
+  const handleTableChange: TableProps<any>['onChange'] = (_pag, _filt, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (s && s.order && SORTABLE_IMPORTS.includes(s.field as SortableImportField)) {
+      setSort({
+        sort_by: s.field as SortableImportField,
+        sort_order: s.order === 'ascend' ? 'asc' : 'desc',
+      });
+    } else {
+      setSort({});
+    }
   };
 
   const openCreate = () => {
@@ -98,7 +117,7 @@ const ImportsPage = () => {
     });
   };
 
-  const columns = useImportListColumns({ onEdit: openEdit, onDelete });
+  const columns = useImportListColumns({ onEdit: openEdit, onDelete, sortBy, sortOrder });
 
   return (
     <div className="imports-page">
@@ -129,6 +148,7 @@ const ImportsPage = () => {
         dataSource={data.map(d => ({ ...d, key: String(d.id) }))}
         loading={loading}
         scroll={{ x: 1400 }}
+        onChange={handleTableChange}
       />
 
       <ImportFormModal

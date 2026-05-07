@@ -53,6 +53,8 @@ export interface SaleFilters {
   sale_type?: string;
   page?: number;
   limit?: number;
+  sort_by?: 'customer_name' | 'status' | 'sale_date' | 'total_amount';
+  sort_order?: 'asc' | 'desc';
 }
 
 export const salesService = {

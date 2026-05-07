@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op, Transaction } from 'sequelize';
+import { Op, Transaction, literal } from 'sequelize';
 import sequelize from '../models/index';
 import { SaleOrder, StockExport, InventoryBalance, Product, Warehouse, SmallUnit } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
@@ -20,7 +20,7 @@ export class SaleController {
   list = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
-    const { keyword, paid, saleDate, sale_type } = req.query as Record<string, string>;
+    const { keyword, paid, saleDate, sale_type, sort_by, sort_order } = req.query as Record<string, string>;
 
     const where: any = {};
     if (keyword) where[Op.or] = [
@@ -30,6 +30,18 @@ export class SaleController {
     if (paid !== undefined && paid !== '') where.paid = paid === 'true';
     if (saleDate) where.sale_date = saleDate;
     if (sale_type) where.sale_type = sale_type;
+
+    const dir = (sort_order || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+    let order: any = [['sale_date', 'DESC'], ['created_at', 'DESC']];
+    if (sort_by === 'customer_name') {
+      order = [['customer_name', dir]];
+    } else if (sort_by === 'sale_date') {
+      order = [['sale_date', dir], ['created_at', dir]];
+    } else if (sort_by === 'total_amount') {
+      order = [['total_amount', dir]];
+    } else if (sort_by === 'status') {
+      order = [[literal('CASE WHEN returned = 1 THEN 1 WHEN paid = 1 THEN 2 ELSE 0 END'), dir]];
+    }
 
     const { count, rows } = await SaleOrder.findAndCountAll({
       where,
@@ -41,7 +53,7 @@ export class SaleController {
           { model: SmallUnit, as: 'smallUnit' },
         ],
       }],
-      order: [['sale_date', 'DESC'], ['created_at', 'DESC']],
+      order,
       limit,
       offset: (page - 1) * limit,
     });

@@ -34,6 +34,16 @@
       &.ant-table-placeholder > td {
         background-color: transparent !important;
       }
+
+      & > td.ant-table-column-sort {
+        background-color: transparent !important;
+      }
+    }
+
+    .ant-table table > thead.ant-table-thead > tr > th.ant-table-column-sort,
+    .ant-table table > thead.ant-table-thead > tr > th.ant-table-column-has-sorters:hover,
+    .ant-table table > thead.ant-table-thead > tr > th.ant-table-column-has-sorters.ant-table-column-sort:hover {
+      background-color: var(--table-header-bg) !important;
     }
   }
 }

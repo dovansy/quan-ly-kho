@@ -35,7 +35,7 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
       open={open}
       title="Chi tiết hóa đơn"
       onCancel={onClose}
-      width={1100}
+      width={1440}
       footer={
         <div className="flex justify-end gap-3 pt-2">
           <AppButton type="primary" onClick={onClose}>
@@ -110,8 +110,20 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
                 width: 60,
                 render: (_: any, __: any, i: number) => i + 1,
               },
-              { title: 'Sản phẩm', dataIndex: 'product_name', key: 'product_name' },
-              { title: 'Kho', dataIndex: 'warehouse_name', key: 'warehouse_name' },
+              {
+                title: 'Tên sản phẩm',
+                dataIndex: 'product_name',
+                key: 'product_name',
+                sorter: (a: any, b: any) =>
+                  (a.product_name || '').localeCompare(b.product_name || '', 'vi'),
+              },
+              {
+                title: 'Kho',
+                dataIndex: 'warehouse_name',
+                key: 'warehouse_name',
+                sorter: (a: any, b: any) =>
+                  (a.warehouse_name || '').localeCompare(b.warehouse_name || '', 'vi'),
+              },
               { title: 'NCC', dataIndex: 'supplier', key: 'supplier' },
               { title: 'Lô', dataIndex: 'batch', key: 'batch', align: 'center' as const },
               {
@@ -128,17 +140,18 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
                   renderCartonPieces(r.quantity, r.units_per_carton, r.small_unit_label),
               },
               {
-                title: 'Đơn giá',
+                title: 'Đơn giá (vnđ)',
                 dataIndex: 'unit_price',
                 key: 'unit_price',
                 align: 'right' as const,
                 render: (v: number) => formatCurrency(v),
               },
               {
-                title: 'Thành tiền',
+                title: 'Thành tiền (vnđ)',
                 dataIndex: 'total',
                 key: 'total',
                 align: 'right' as const,
+                sorter: (a: any, b: any) => (Number(a.total) || 0) - (Number(b.total) || 0),
                 render: (v: number) => <span className="font-semibold">{formatCurrency(v)}</span>,
               },
             ]}
@@ -149,7 +162,7 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
                 </AntTable.Summary.Cell>
                 <AntTable.Summary.Cell index={8} align="right">
                   <span className="text-lg font-bold text-primary">
-                    {formatCurrency(viewing.total_amount)}
+                    {formatCurrency(viewing.total_amount)} vnđ
                   </span>
                 </AntTable.Summary.Cell>
               </AntTable.Summary.Row>

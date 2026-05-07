@@ -5,19 +5,42 @@ import { formatCurrency, formatDate } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
 import { SaleOrderRow } from '../types';
 
+type SortableField = 'customer_name' | 'status' | 'sale_date' | 'total_amount';
+type AntSortOrder = 'ascend' | 'descend' | null;
+
 interface Params {
   onView: (r: SaleOrderRow) => void;
   onEdit: (r: SaleOrderRow) => void;
   onDelete: (r: SaleOrderRow) => void;
   onReturn: (r: SaleOrderRow) => void;
+  sortBy?: SortableField;
+  sortOrder?: 'asc' | 'desc';
 }
 
-export const useSaleListColumns = ({ onView, onEdit, onDelete, onReturn }: Params) => [
+const getSortOrder = (
+  field: SortableField,
+  sortBy?: SortableField,
+  sortOrder?: 'asc' | 'desc'
+): AntSortOrder => {
+  if (sortBy !== field) return null;
+  return sortOrder === 'asc' ? 'ascend' : 'descend';
+};
+
+export const useSaleListColumns = ({
+  onView,
+  onEdit,
+  onDelete,
+  onReturn,
+  sortBy,
+  sortOrder,
+}: Params) => [
   sttColumn,
   {
     title: 'Khách hàng',
     dataIndex: 'customer_name',
     key: 'customer_name',
+    sorter: true,
+    sortOrder: getSortOrder('customer_name', sortBy, sortOrder),
     render: (t: string, r: SaleOrderRow) => (
       <div>
         <div className="font-bold">{t || '—'}</div>
@@ -45,16 +68,20 @@ export const useSaleListColumns = ({ onView, onEdit, onDelete, onReturn }: Param
     render: (_: any, r: SaleOrderRow) => r.items.length,
   },
   {
-    title: 'Tổng tiền',
+    title: 'Tổng tiền (vnđ)',
     dataIndex: 'total_amount',
     key: 'total_amount',
     align: 'right' as const,
+    sorter: true,
+    sortOrder: getSortOrder('total_amount', sortBy, sortOrder),
     render: (v: number) => formatCurrency(v),
   },
   {
     title: 'Trạng thái',
     key: 'status',
     align: 'center' as const,
+    sorter: true,
+    sortOrder: getSortOrder('status', sortBy, sortOrder),
     render: (_: any, r: SaleOrderRow) => {
       if (r.returned) return <Tag color="warning">Đã hoàn hàng</Tag>;
       return r.paid ? <Tag color="success">Đã trả</Tag> : <Tag color="error">Còn nợ</Tag>;
@@ -65,6 +92,8 @@ export const useSaleListColumns = ({ onView, onEdit, onDelete, onReturn }: Param
     dataIndex: 'sale_date',
     key: 'sale_date',
     align: 'center' as const,
+    sorter: true,
+    sortOrder: getSortOrder('sale_date', sortBy, sortOrder),
     render: (d: string) => formatDate(d),
   },
   {

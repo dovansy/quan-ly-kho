@@ -9,7 +9,7 @@ import { renderExpiryTag } from '@/utils/expiry';
 import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
-import { Col, Form, Row, Space, Tag } from 'antd';
+import { Col, Form, Row, Space, Tag, type TableProps } from 'antd';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { FiDownload, FiRotateCcw, FiSearch } from 'react-icons/fi';
@@ -19,13 +19,17 @@ const InventoryPage = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<Record<string, any>>({});
   const [keywordInput, setKeywordInput] = useState('');
+  const [sort, setSort] = useState<{
+    sort_by?: 'product_name' | 'warehouse_name' | 'nearest_expiry';
+    sort_order?: 'asc' | 'desc';
+  }>({});
   const debouncedKeyword = useDebounce(keywordInput, 300);
 
   const selectedWithKeyword = debouncedKeyword
     ? { ...selected, keyword: debouncedKeyword }
     : selected;
 
-  const { data: inventoryRes, isLoading } = useGetInventory(filters);
+  const { data: inventoryRes, isLoading } = useGetInventory({ ...filters, ...sort });
   const { data: filtersRes } = useGetInventoryFilters(selectedWithKeyword);
 
   const dataSource = inventoryRes?.data || [];
@@ -60,9 +64,29 @@ const InventoryPage = () => {
     setFilters({});
     setSelected({});
     setKeywordInput('');
+    setSort({});
+  };
+
+  const handleTableChange: TableProps<any>['onChange'] = (_pag, _filt, sorter) => {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (
+      s &&
+      s.order &&
+      (s.field === 'product_name' || s.field === 'warehouse_name' || s.field === 'nearest_expiry')
+    ) {
+      setSort({
+        sort_by: s.field,
+        sort_order: s.order === 'ascend' ? 'asc' : 'desc',
+      });
+    } else {
+      setSort({});
+    }
   };
 
   const handleExportExcel = () => {
+    const sorted = [...dataSource].sort((a: any, b: any) =>
+      (a.product_name || '').localeCompare(b.product_name || '', 'vi')
+    );
     exportToExcel(
       [
         { title: 'STT', dataIndex: 'index' },
@@ -70,7 +94,7 @@ const InventoryPage = () => {
         { title: 'Đơn vị', dataIndex: 'small_unit', render: (u: any) => u?.label || '' },
         { title: 'Kho', dataIndex: 'warehouse_name' },
         { title: 'Loại sản phẩm', dataIndex: 'category' },
-        { title: 'Nhà cung cấp', dataIndex: 'supplier' },
+        { title: 'NCC', dataIndex: 'supplier' },
         { title: 'Lô', dataIndex: 'batch' },
         {
           title: 'Hạn dùng',
@@ -84,7 +108,7 @@ const InventoryPage = () => {
             formatCartonPiecesPlain(val, record.units_per_carton, record.small_unit?.label),
         },
       ],
-      dataSource,
+      sorted,
       `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
       'Ton kho'
     );
@@ -96,6 +120,9 @@ const InventoryPage = () => {
       title: 'Tên sản phẩm',
       dataIndex: 'product_name',
       key: 'product_name',
+      sorter: true,
+      sortOrder:
+        sort.sort_by === 'product_name' ? (sort.sort_order === 'asc' ? 'ascend' : 'descend') : null,
       render: (text: string, record: any) => (
         <div>
           <div className="font-bold">{text}</div>
@@ -105,14 +132,25 @@ const InventoryPage = () => {
         </div>
       ),
     },
-    { title: 'Kho', dataIndex: 'warehouse_name', key: 'warehouse_name' },
+    {
+      title: 'Kho',
+      dataIndex: 'warehouse_name',
+      key: 'warehouse_name',
+      sorter: true,
+      sortOrder:
+        sort.sort_by === 'warehouse_name'
+          ? sort.sort_order === 'asc'
+            ? 'ascend'
+            : 'descend'
+          : null,
+    },
     {
       title: 'Loại',
       dataIndex: 'category',
       key: 'category',
       render: (t: string) => (t ? <Tag color="blue">{t}</Tag> : '-'),
     },
-    { title: 'Nhà cung cấp', dataIndex: 'supplier', key: 'supplier' },
+    { title: 'NCC', dataIndex: 'supplier', key: 'supplier' },
     {
       title: 'Lô',
       dataIndex: 'batch',
@@ -124,6 +162,13 @@ const InventoryPage = () => {
       dataIndex: 'nearest_expiry',
       key: 'nearest_expiry',
       align: 'center' as const,
+      sorter: true,
+      sortOrder:
+        sort.sort_by === 'nearest_expiry'
+          ? sort.sort_order === 'asc'
+            ? 'ascend'
+            : 'descend'
+          : null,
       render: (date: string) => renderExpiryTag(date),
     },
     {
@@ -246,6 +291,7 @@ const InventoryPage = () => {
         dataSource={dataSource}
         loading={isLoading}
         scroll={{ x: 1200 }}
+        onChange={handleTableChange}
       />
     </div>
   );

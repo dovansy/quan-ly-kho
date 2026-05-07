@@ -11,7 +11,7 @@ export class InventoryController {
   list = async (req: Request, res: Response): Promise<void> => {
     const {
       warehouse_id, category, supplier, batch, keyword,
-      includeEmpty,
+      includeEmpty, sort_by, sort_order,
     } = req.query as Record<string, string>;
 
     const where: any = {};
@@ -23,6 +23,16 @@ export class InventoryController {
     const productWhere: any = {};
     if (keyword) productWhere.name = { [Op.like]: `%${keyword}%` };
     if (category) productWhere.category = category;
+
+    const dir = (sort_order || '').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+    let order: any = [['updated_at', 'DESC']];
+    if (sort_by === 'product_name') {
+      order = [[{ model: Product, as: 'product' }, 'name', dir]];
+    } else if (sort_by === 'warehouse_name') {
+      order = [[{ model: Warehouse, as: 'warehouse' }, 'name', dir]];
+    } else if (sort_by === 'nearest_expiry') {
+      order = [['nearest_expiry', dir]];
+    }
 
     const rows = await InventoryBalance.findAll({
       where,
@@ -45,7 +55,7 @@ export class InventoryController {
           include: [{ model: SmallUnit, as: 'defaultSmallUnit' }] },
         { model: Warehouse, as: 'warehouse' },
       ],
-      order: [['updated_at', 'DESC']],
+      order,
     });
 
     sendSuccess(res, rows.map(format));

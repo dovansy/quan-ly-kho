@@ -12,7 +12,7 @@ export const SaleStatsCards = ({ totalRevenue, totalDebt }: Props) => (
     <StatCard
       title="Tổng doanh thu"
       value={totalRevenue}
-      suffix="đ"
+      suffix="vnđ"
       prefix={<FiDollarSign className="mr-2" />}
       bgColor="bg-green-50"
       colSpan={12}
@@ -20,7 +20,7 @@ export const SaleStatsCards = ({ totalRevenue, totalDebt }: Props) => (
     <StatCard
       title="Dư nợ"
       value={totalDebt}
-      suffix="đ"
+      suffix="vnđ"
       prefix={<FiAlertCircle className="mr-2" />}
       bgColor="bg-red-50"
       valueStyle={{ color: '#cf1322' }}

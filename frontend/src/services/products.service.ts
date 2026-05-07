@@ -28,6 +28,8 @@ export interface ProductFilters {
   status?: string;
   page?: number;
   limit?: number;
+  sort_by?: 'name';
+  sort_order?: 'asc' | 'desc';
 }
 
 export const productsService = {

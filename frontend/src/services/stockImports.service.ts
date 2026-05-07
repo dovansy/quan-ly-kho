@@ -49,6 +49,8 @@ export interface StockImportFilters {
   importDate?: string;
   page?: number;
   limit?: number;
+  sort_by?: 'product_name' | 'warehouse_name' | 'expiry_date' | 'import_date';
+  sort_order?: 'asc' | 'desc';
 }
 
 export const stockImportsService = {
