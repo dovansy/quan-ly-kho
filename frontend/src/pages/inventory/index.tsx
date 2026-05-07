@@ -10,6 +10,7 @@ import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
 import { Col, Form, Row, Space, Tag, type TableProps } from 'antd';
+import type { SortOrder } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { FiDownload, FiRotateCcw, FiSearch } from 'react-icons/fi';
@@ -121,8 +122,9 @@ const InventoryPage = () => {
       dataIndex: 'product_name',
       key: 'product_name',
       sorter: true,
-      sortOrder:
-        sort.sort_by === 'product_name' ? (sort.sort_order === 'asc' ? 'ascend' : 'descend') : null,
+      sortOrder: (sort.sort_by === 'product_name'
+        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        : null) as SortOrder,
       render: (text: string, record: any) => (
         <div>
           <div className="font-bold">{text}</div>
@@ -137,12 +139,9 @@ const InventoryPage = () => {
       dataIndex: 'warehouse_name',
       key: 'warehouse_name',
       sorter: true,
-      sortOrder:
-        sort.sort_by === 'warehouse_name'
-          ? sort.sort_order === 'asc'
-            ? 'ascend'
-            : 'descend'
-          : null,
+      sortOrder: (sort.sort_by === 'warehouse_name'
+        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        : null) as SortOrder,
     },
     {
       title: 'Loại',
@@ -163,12 +162,9 @@ const InventoryPage = () => {
       key: 'nearest_expiry',
       align: 'center' as const,
       sorter: true,
-      sortOrder:
-        sort.sort_by === 'nearest_expiry'
-          ? sort.sort_order === 'asc'
-            ? 'ascend'
-            : 'descend'
-          : null,
+      sortOrder: (sort.sort_by === 'nearest_expiry'
+        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        : null) as SortOrder,
       render: (date: string) => renderExpiryTag(date),
     },
     {
