@@ -1,8 +1,9 @@
 import { AppButton } from '@/components/atoms/AppButton';
 import { AppTable } from '@/components/atoms/AppTable/AppTable';
 import { TableProps } from 'antd';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
+import { PaginationContext } from '@/utils/tableColumns';
 
 interface TableSectionProps<T = any> extends Pick<
   TableProps<T>,
@@ -30,14 +31,34 @@ export const TableSection = <T extends object>({
   dataSource,
   loading,
   scroll,
-  pageSize = 10,
+  pageSize = 20,
   current,
   isFiltering,
   onChange,
 }: TableSectionProps<T>) => {
-  const paginationConfig = current !== undefined
-    ? { current, pageSize, total: totalCount, showSizeChanger: true }
-    : { defaultPageSize: pageSize, total: totalCount, showSizeChanger: true };
+  const [internalPagination, setInternalPagination] = useState({
+    current: current ?? 1,
+    pageSize,
+  });
+  const effectivePagination = {
+    current: current ?? internalPagination.current,
+    pageSize: internalPagination.pageSize,
+  };
+  const paginationConfig =
+    current !== undefined
+      ? { current, pageSize, total: totalCount, showSizeChanger: true }
+      : { defaultPageSize: pageSize, total: totalCount, showSizeChanger: true };
+
+  const handleChange: TableProps<T>['onChange'] = (pag, filt, sorter, extra) => {
+    if (pag) {
+      setInternalPagination({
+        current: pag.current ?? 1,
+        pageSize: pag.pageSize ?? pageSize,
+      });
+    }
+    onChange?.(pag, filt, sorter, extra);
+  };
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-sm table-section">
       <div className="flex items-center justify-between mb-4">
@@ -57,15 +78,17 @@ export const TableSection = <T extends object>({
         </div>
       </div>
 
-      <AppTable
-        columns={columns}
-        dataSource={dataSource}
-        loading={loading}
-        scroll={scroll}
-        isFiltering={isFiltering}
-        onChange={onChange}
-        pagination={paginationConfig}
-      />
+      <PaginationContext.Provider value={effectivePagination}>
+        <AppTable
+          columns={columns}
+          dataSource={dataSource}
+          loading={loading}
+          scroll={scroll}
+          isFiltering={isFiltering}
+          onChange={handleChange}
+          pagination={paginationConfig}
+        />
+      </PaginationContext.Provider>
     </div>
   );
 };

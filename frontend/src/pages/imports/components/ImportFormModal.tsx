@@ -85,13 +85,6 @@ export const ImportFormModal = ({
     [allImports, matchedProduct]
   );
 
-  const filteredWarehouseOptions = useMemo(() => {
-    if (!isExistingProduct) return warehouseOptions;
-    const ids = new Set(productImports.map(i => i.warehouse_id));
-    const filtered = warehouseOptions.filter(o => ids.has(o.value));
-    return filtered.length ? filtered : warehouseOptions;
-  }, [isExistingProduct, warehouseOptions, productImports]);
-
   const batchOptions = useMemo(() => {
     if (!isExistingProduct || !warehouseIdWatch) return [];
     const batches = Array.from(
@@ -210,7 +203,7 @@ export const ImportFormModal = ({
   return (
     <CrudModal
       open={open}
-      title={editing ? 'Chỉnh sửa lần nhập' : 'Nhập hàng mới'}
+      title={editing ? 'Chỉnh sửa nhập' : 'Nhập hàng mới'}
       onCancel={close}
       onSubmit={onSubmit}
       submitLabel={editing ? 'Cập nhật' : 'Nhập hàng'}
@@ -223,7 +216,7 @@ export const ImportFormModal = ({
             <Form.Item
               name="product_name"
               label="Tên sản phẩm"
-              rules={[{ required: true, message: 'Vui lòng nhập tên SP' }]}
+              rules={[{ required: true, message: 'Vui lòng nhập tên sản phẩm' }]}
             >
               <AppAutoComplete
                 placeholder="Nhập SP mới hoặc chọn SP đã có"
@@ -247,8 +240,9 @@ export const ImportFormModal = ({
               rules={[{ required: true, message: 'Chọn kho' }]}
             >
               <AppSelect
+                allowClear
                 placeholder="Chọn kho"
-                options={editing ? warehouseOptions : filteredWarehouseOptions}
+                options={warehouseOptions}
                 showSearch
                 onChange={onWarehouseChange}
                 filterOption={(i, o) =>
@@ -260,7 +254,7 @@ export const ImportFormModal = ({
           <Col xs={24} sm={12}>
             <Form.Item
               name="supplier"
-              label="Nhà cung cấp"
+              label="NCC"
               rules={[{ required: true, message: 'Nhập NCC' }]}
             >
               <AppAutoComplete placeholder="Tên NCC" options={supplierOpts} />
@@ -336,8 +330,10 @@ export const ImportFormModal = ({
           <Col xs={24} sm={8}>
             <Form.Item
               name="units_per_carton"
-              label={`${smallUnitLabel || 'Lẻ'} / Kiện`}
-              rules={[{ required: true, message: 'Nhập số lẻ / kiện' }]}
+              label={`Số ${smallUnitLabel || 'Lẻ'} / kiện`}
+              rules={[
+                { required: true, message: 'Nhập số ' + (smallUnitLabel || 'Lẻ') + ' / kiện' },
+              ]}
             >
               <AppInputNumber placeholder="1" decimalScale={0} className="w-full" />
             </Form.Item>

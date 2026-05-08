@@ -40,6 +40,7 @@ export const useSaleListColumns = ({
     dataIndex: 'customer_name',
     key: 'customer_name',
     sorter: true,
+    width: '200px',
     sortOrder: getSortOrder('customer_name', sortBy, sortOrder),
     render: (t: string, r: SaleOrderRow) => (
       <div>

@@ -12,5 +12,6 @@ export const ROUTE_PATH = {
   PRODUCTS: '/products',
   WAREHOUSES: '/warehouses',
   IMPORTS: '/imports',
+  TRANSFERS: '/transfers',
   SMALL_UNITS: '/small-units',
 };

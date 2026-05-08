@@ -1,13 +1,12 @@
-import { Form, type TableProps } from 'antd';
-import dayjs from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { Form, Popconfirm, type TableProps } from 'antd';
+import { useMemo, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
 import { useGetInventory } from '@/hooks/api/inventory';
 import { useDeleteSale, useGetSales, useReturnSale } from '@/hooks/api/sales';
-import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { salesService } from '@/services/sales.service';
 import { toApiDate } from '@/utils/format';
 import { SaleDetailModal } from './components/SaleDetailModal';
 import { SaleFilterForm } from './components/SaleFilterForm';
@@ -23,7 +22,8 @@ type SortableSaleField = (typeof SORTABLE_SALES)[number];
 
 const SalesPage = () => {
   const [filterForm] = Form.useForm();
-  const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const isFiltering = Object.keys(filters).some(k => filters[k] !== undefined && filters[k] !== '');
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editing, setEditing] = useState<SaleOrderRow | null>(null);
   const [defaultSaleType, setDefaultSaleType] = useState<string | undefined>(undefined);
@@ -51,16 +51,6 @@ const SalesPage = () => {
     [activeOrders]
   );
 
-  // Hydrate form từ URL khi load lần đầu hoặc filters đổi (back/forward).
-  useEffect(() => {
-    filterForm.setFieldsValue({
-      keyword: filters.keyword || undefined,
-      paid:
-        filters.paid === 'true' ? true : filters.paid === 'false' ? false : undefined,
-      saleDate: filters.saleDate ? dayjs(filters.saleDate) : undefined,
-    });
-  }, [filters, filterForm]);
-
   const onSearch = (v: any) =>
     setFilters({
       keyword: v.keyword,
@@ -70,7 +60,7 @@ const SalesPage = () => {
 
   const onClear = () => {
     filterForm.resetFields();
-    clearFilters();
+    setFilters({});
     setSort({});
   };
 
@@ -143,6 +133,34 @@ const SalesPage = () => {
     sortOrder,
   });
 
+  const onExport = async () => {
+    try {
+      const res = await salesService.getAll({
+        keyword: filters.keyword,
+        paid: filters.paid,
+        saleDate: filters.saleDate,
+        limit: 100000,
+      });
+      const orders = (res.data?.data || []).map(mapSale);
+      exportSalesExcel(orders, inventoryList);
+    } catch (e: any) {
+      error({
+        message: 'Lỗi xuất Excel',
+        description: e?.response?.data?.message || 'Không thể xuất',
+      });
+    }
+  };
+
+  const filterSummary = (() => {
+    const parts: { label: string; value: string }[] = [];
+    if (filters.keyword) parts.push({ label: 'Khách hàng', value: `"${filters.keyword}"` });
+    if (filters.paid !== undefined && filters.paid !== '') {
+      parts.push({ label: 'Thanh toán', value: filters.paid === 'true' ? 'Đã trả' : 'Còn nợ' });
+    }
+    if (filters.saleDate) parts.push({ label: 'Ngày bán', value: filters.saleDate });
+    return parts;
+  })();
+
   return (
     <div className="sales-page">
       <SaleStatsCards totalRevenue={totalRevenue} totalDebt={totalDebt} />
@@ -156,13 +174,34 @@ const SalesPage = () => {
         totalCount={data.length}
         isFiltering={isFiltering}
         extraActions={
-          <AppButton
-            icon={<FiDownload />}
-            type="default"
-            onClick={() => exportSalesExcel(data, inventoryList)}
-          >
-            Xuất Excel
-          </AppButton>
+          isFiltering ? (
+            <Popconfirm
+              title="Xuất Excel với bộ lọc hiện tại?"
+              description={
+                <div style={{ maxWidth: 320 }}>
+                  <div className="mb-1">Sẽ xuất data theo filter:</div>
+                  <ul className="pl-4 m-0 list-disc">
+                    {filterSummary.map(f => (
+                      <li key={f.label} className="break-words">
+                        <span className="font-medium">{f.label}:</span> {f.value}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              }
+              onConfirm={onExport}
+              okText="Xuất"
+              cancelText="Hủy"
+            >
+              <AppButton icon={<FiDownload />} type="default">
+                Xuất Excel
+              </AppButton>
+            </Popconfirm>
+          ) : (
+            <AppButton icon={<FiDownload />} type="default" onClick={onExport}>
+              Xuất Excel
+            </AppButton>
+          )
         }
         columns={columns}
         dataSource={data}

@@ -30,6 +30,7 @@ import { StockImport } from './StockImport';
 import { SaleOrder } from './SaleOrder';
 import { StockExport } from './StockExport';
 import { InventoryBalance } from './InventoryBalance';
+import { InventoryTransfer } from './InventoryTransfer';
 
 // ── Define associations ─────────────────────────────────
 User.belongsToMany(Role, { through: 'user_roles', foreignKey: 'user_id', otherKey: 'role_id', as: 'roles', timestamps: false });
@@ -59,4 +60,10 @@ SaleOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy' })
 InventoryBalance.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
 InventoryBalance.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'warehouse' });
 
-export { User, Role, Warehouse, SmallUnit, Product, StockImport, SaleOrder, StockExport, InventoryBalance };
+// Inventory transfers
+InventoryTransfer.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+InventoryTransfer.belongsTo(Warehouse, { foreignKey: 'warehouse_id_from', as: 'warehouseFrom' });
+InventoryTransfer.belongsTo(Warehouse, { foreignKey: 'warehouse_id_to', as: 'warehouseTo' });
+InventoryTransfer.belongsTo(User, { foreignKey: 'transferred_by_user_id', as: 'transferredBy' });
+
+export { User, Role, Warehouse, SmallUnit, Product, StockImport, SaleOrder, StockExport, InventoryBalance, InventoryTransfer };

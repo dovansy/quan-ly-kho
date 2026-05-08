@@ -9,6 +9,7 @@ export interface Product {
   supplier: string | null;
   default_small_unit_id: number;
   default_small_unit: { id: number; code: string; label: string } | null;
+  units_per_carton: number | null;
   status: 'active' | 'inactive';
   created_at?: string;
   updated_at?: string;

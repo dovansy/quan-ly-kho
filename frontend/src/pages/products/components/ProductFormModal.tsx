@@ -85,7 +85,7 @@ export const ProductFormModal = ({
             </Form.Item>
           </Col>
           <Col xs={24} sm={12}>
-            <Form.Item name="supplier" label="Nhà cung cấp">
+            <Form.Item name="supplier" label="NCC">
               <AppInput placeholder="Tên NCC" />
             </Form.Item>
           </Col>

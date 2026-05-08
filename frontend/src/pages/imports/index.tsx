@@ -1,18 +1,15 @@
-import { Form, type TableProps } from 'antd';
+import { Form, Popconfirm, type TableProps } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
-import {
-  useDeleteImport,
-  useGetImports,
-} from '@/hooks/api/imports';
+import { useDeleteImport, useGetImports } from '@/hooks/api/imports';
 import { useGetProductCategories, useGetProducts } from '@/hooks/api/products';
 import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
 import { useGetWarehouseList } from '@/hooks/api/warehouses';
-import { useUrlFilters } from '@/hooks/useUrlFilters';
+import { stockImportsService } from '@/services/stockImports.service';
 import { ImportFilterForm } from './components/ImportFilterForm';
 import { ImportFormModal } from './components/ImportFormModal';
 import { useImportListColumns } from './components/useImportListColumns';
@@ -24,10 +21,13 @@ type SortableImportField = (typeof SORTABLE_IMPORTS)[number];
 
 const ImportsPage = () => {
   const [filterForm] = Form.useForm();
-  const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const isFiltering = Object.keys(filters).some(k => filters[k] !== undefined && filters[k] !== '');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ImportRecord | null>(null);
-  const [sort, setSort] = useState<{ sort_by?: SortableImportField; sort_order?: 'asc' | 'desc' }>({});
+  const [sort, setSort] = useState<{ sort_by?: SortableImportField; sort_order?: 'asc' | 'desc' }>(
+    {}
+  );
 
   const { data: importsRes, isLoading } = useGetImports({ ...filters, ...sort });
   const { data: warehouseListRes } = useGetWarehouseList();
@@ -39,7 +39,7 @@ const ImportsPage = () => {
   const { success, error } = useAppNotification();
 
   const data: ImportRecord[] = (importsRes?.data || []) as any;
-  const warehouseOptions = (warehouseListRes?.data || []).map((w: any) => ({
+  const allWarehouseOptions = (warehouseListRes?.data || []).map((w: any) => ({
     label: w.label,
     value: w.id,
   }));
@@ -48,6 +48,24 @@ const ImportsPage = () => {
   const productList: any[] = productsRes?.data || [];
   const productNameOpts = productList.map((p: any) => ({ label: p.name, value: p.name }));
   const allImports: ImportRecord[] = (allImportsRes?.data || []) as any;
+
+  const warehouseSelected = Form.useWatch('warehouse_id', filterForm);
+  const batchSelected = Form.useWatch('batch', filterForm);
+
+  const cascadedWarehouseOptions = (() => {
+    if (!batchSelected) return allWarehouseOptions;
+    const ids = new Set(allImports.filter(i => i.batch === batchSelected).map(i => i.warehouse_id));
+    return allWarehouseOptions.filter(o => ids.has(o.value));
+  })();
+
+  const cascadedBatchOptions = (() => {
+    let pool = allImports;
+    if (warehouseSelected) {
+      pool = pool.filter(i => i.warehouse_id === Number(warehouseSelected));
+    }
+    const batches = Array.from(new Set(pool.map(i => i.batch).filter(Boolean)));
+    return batches.sort().map(b => ({ label: b, value: b }));
+  })();
 
   const loading = isLoading || remove.isPending;
 
@@ -73,7 +91,7 @@ const ImportsPage = () => {
 
   const onClear = () => {
     filterForm.resetFields();
-    clearFilters();
+    setFilters({});
     setSort({});
   };
 
@@ -106,6 +124,25 @@ const ImportsPage = () => {
     setEditing(null);
   };
 
+  const onExport = async () => {
+    try {
+      const res = await stockImportsService.list({
+        keyword: filters.keyword,
+        warehouse_id: filters.warehouse_id ? Number(filters.warehouse_id) : undefined,
+        supplier: filters.supplier,
+        batch: filters.batch,
+        importDate: filters.importDate,
+        limit: 100000,
+      });
+      exportImportsExcel((res.data?.data || []) as any);
+    } catch (e: any) {
+      error({
+        message: 'Lỗi xuất Excel',
+        description: e?.response?.data?.message || 'Không thể xuất',
+      });
+    }
+  };
+
   const onDelete = (r: ImportRecord) => {
     remove.mutate(r.id, {
       onSuccess: () => success({ message: 'Xóa bản ghi nhập thành công' }),
@@ -118,13 +155,27 @@ const ImportsPage = () => {
   };
 
   const columns = useImportListColumns({ onEdit: openEdit, onDelete, sortBy, sortOrder });
+  const filterSummary = (() => {
+    const parts: { label: string; value: string }[] = [];
+    if (filters.keyword) parts.push({ label: 'Tên sản phẩm', value: `"${filters.keyword}"` });
+    if (filters.warehouse_id) {
+      const w = allWarehouseOptions.find((o: any) => o.value === Number(filters.warehouse_id));
+      if (w) parts.push({ label: 'Kho', value: w.label });
+    }
+    if (filters.supplier) parts.push({ label: 'NCC', value: filters.supplier });
+    if (filters.batch) parts.push({ label: 'Lô', value: filters.batch });
+    if (filters.importDate) parts.push({ label: 'Ngày nhập', value: filters.importDate });
+    return parts;
+  })();
 
   return (
     <div className="imports-page">
       <ImportFilterForm
         form={filterForm}
         loading={loading}
-        warehouseOptions={warehouseOptions}
+        warehouseOptions={cascadedWarehouseOptions}
+        batchOptions={cascadedBatchOptions}
+        productNameOpts={productNameOpts}
         onSearch={onSearch}
         onClear={onClear}
       />
@@ -136,13 +187,34 @@ const ImportsPage = () => {
         addLabel="Nhập hàng mới"
         onAdd={openCreate}
         extraActions={
-          <AppButton
-            icon={<FiDownload />}
-            type="default"
-            onClick={() => exportImportsExcel(data)}
-          >
-            Xuất Excel
-          </AppButton>
+          isFiltering ? (
+            <Popconfirm
+              title="Xuất Excel với bộ lọc hiện tại?"
+              description={
+                <div style={{ maxWidth: 320 }}>
+                  <div className="mb-1">Sẽ xuất data theo filter:</div>
+                  <ul className="pl-4 m-0 list-disc">
+                    {filterSummary.map(f => (
+                      <li key={f.label} className="break-words">
+                        <span className="font-medium">{f.label}:</span> {f.value}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              }
+              onConfirm={onExport}
+              okText="Xuất"
+              cancelText="Hủy"
+            >
+              <AppButton icon={<FiDownload />} type="default">
+                Xuất Excel
+              </AppButton>
+            </Popconfirm>
+          ) : (
+            <AppButton icon={<FiDownload />} type="default" onClick={onExport}>
+              Xuất Excel
+            </AppButton>
+          )
         }
         columns={columns}
         dataSource={data.map(d => ({ ...d, key: String(d.id) }))}
@@ -154,7 +226,7 @@ const ImportsPage = () => {
       <ImportFormModal
         open={modalOpen}
         editing={editing}
-        warehouseOptions={warehouseOptions}
+        warehouseOptions={allWarehouseOptions}
         smallUnitOpts={smallUnitOpts}
         categoryOpts={categoryOpts}
         productList={productList}

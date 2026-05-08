@@ -14,6 +14,8 @@ export function InventoryRoutes(): Router {
    *     description: Xem tồn kho (đọc từ inventory_balance)
    */
   router.get('/filters', c.filters);
+  router.get('/transfers', c.transfersList);
+  router.post('/transfer', c.transfer);
   router.get('/', c.list);
 
   return router;

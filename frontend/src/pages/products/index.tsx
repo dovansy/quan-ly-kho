@@ -1,9 +1,8 @@
 import { Form, type TableProps } from 'antd';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { TableSection } from '@/components/organisms/table-section';
 import { useGetProductCategories, useGetProducts } from '@/hooks/api/products';
 import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
-import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { ProductFilterForm } from './components/ProductFilterForm';
 import { ProductFormModal } from './components/ProductFormModal';
 import { useProductListColumns } from './components/useProductListColumns';
@@ -11,7 +10,8 @@ import { ProductRow } from './types';
 
 const ProductsPage = () => {
   const [filterForm] = Form.useForm();
-  const { filters, setFilters, clearFilters, isFiltering } = useUrlFilters();
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const isFiltering = Object.keys(filters).some(k => filters[k] !== undefined && filters[k] !== '');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [sort, setSort] = useState<{ sort_by?: 'name'; sort_order?: 'asc' | 'desc' }>({});
@@ -23,21 +23,14 @@ const ProductsPage = () => {
   const data: ProductRow[] = (res?.data || []) as any;
   const categoryOpts = catRes?.data || [];
   const smallUnitOpts = smallUnitsRes?.data || [];
-
-  useEffect(() => {
-    filterForm.setFieldsValue({
-      keyword: filters.keyword || undefined,
-      category: filters.category || undefined,
-      status: filters.status || undefined,
-    });
-  }, [filters, filterForm]);
+  const productNameOpts = data.map((p: any) => ({ label: p.name, value: p.name }));
 
   const onSearch = (v: any) =>
     setFilters({ keyword: v.keyword, category: v.category, status: v.status });
 
   const onClear = () => {
     filterForm.resetFields();
-    clearFilters();
+    setFilters({});
     setSort({});
   };
 
@@ -80,6 +73,7 @@ const ProductsPage = () => {
         form={filterForm}
         loading={isLoading}
         categoryOpts={categoryOpts}
+        productNameOpts={productNameOpts}
         onSearch={onSearch}
         onClear={onClear}
       />

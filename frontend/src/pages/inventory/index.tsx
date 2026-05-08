@@ -1,30 +1,38 @@
+import { AppAutoComplete } from '@/components/atoms/AppAutoComplete';
 import { AppButton } from '@/components/atoms/AppButton';
-import { AppInput } from '@/components/atoms/AppInput';
 import { AppSelect } from '@/components/atoms/AppSelect';
 import { TableSection } from '@/components/organisms/table-section/TableSection';
 import { useGetInventory, useGetInventoryFilters } from '@/hooks/api/inventory';
+import { useGetProducts } from '@/hooks/api/products';
+import { useGetWarehouseList } from '@/hooks/api/warehouses';
+import { useAppNotification } from '@/components/templates/notification';
+import { inventoryService } from '@/services/inventory.service';
 import useDebounce from '@/hooks/useDebounce';
 import { sttColumn } from '@/utils/tableColumns';
 import { renderExpiryTag } from '@/utils/expiry';
 import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
-import { Col, Form, Row, Space, Tag, type TableProps } from 'antd';
+import { Col, Form, Popconfirm, Row, Space, Tag, type TableProps } from 'antd';
 import type { SortOrder } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import { useState } from 'react';
-import { FiDownload, FiRotateCcw, FiSearch } from 'react-icons/fi';
+import { FiDownload, FiRepeat, FiRotateCcw, FiSearch } from 'react-icons/fi';
+import { TransferModal } from './TransferModal';
 
 const InventoryPage = () => {
   const [form] = Form.useForm();
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [selected, setSelected] = useState<Record<string, any>>({});
   const [keywordInput, setKeywordInput] = useState('');
+  const [transferOpen, setTransferOpen] = useState(false);
   const [sort, setSort] = useState<{
     sort_by?: 'product_name' | 'warehouse_name' | 'nearest_expiry';
     sort_order?: 'asc' | 'desc';
   }>({});
   const debouncedKeyword = useDebounce(keywordInput, 300);
+  const { error } = useAppNotification();
+  const isFiltering = Object.keys(filters).some(k => filters[k] !== undefined && filters[k] !== '');
 
   const selectedWithKeyword = debouncedKeyword
     ? { ...selected, keyword: debouncedKeyword }
@@ -32,6 +40,12 @@ const InventoryPage = () => {
 
   const { data: inventoryRes, isLoading } = useGetInventory({ ...filters, ...sort });
   const { data: filtersRes } = useGetInventoryFilters(selectedWithKeyword);
+  const { data: warehouseListRes } = useGetWarehouseList();
+  const { data: productsRes } = useGetProducts({ limit: 1000 });
+  const productNameOpts = (productsRes?.data || []).map((p: any) => ({
+    label: p.name,
+    value: p.name,
+  }));
 
   const dataSource = inventoryRes?.data || [];
   const filterOptions = filtersRes?.data || {
@@ -84,36 +98,67 @@ const InventoryPage = () => {
     }
   };
 
-  const handleExportExcel = () => {
-    const sorted = [...dataSource].sort((a: any, b: any) =>
-      (a.product_name || '').localeCompare(b.product_name || '', 'vi')
-    );
-    exportToExcel(
-      [
-        { title: 'STT', dataIndex: 'index' },
-        { title: 'Tên sản phẩm', dataIndex: 'product_name' },
-        { title: 'Đơn vị', dataIndex: 'small_unit', render: (u: any) => u?.label || '' },
-        { title: 'Kho', dataIndex: 'warehouse_name' },
-        { title: 'Loại sản phẩm', dataIndex: 'category' },
-        { title: 'NCC', dataIndex: 'supplier' },
-        { title: 'Lô', dataIndex: 'batch' },
-        {
-          title: 'Hạn dùng',
-          dataIndex: 'nearest_expiry',
-          render: (v: string) => (v ? formatDate(v) : ''),
-        },
-        {
-          title: 'Tồn',
-          dataIndex: 'stock_pieces',
-          render: (val: number, record: any) =>
-            formatCartonPiecesPlain(val, record.units_per_carton, record.small_unit?.label),
-        },
-      ],
-      sorted,
-      `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
-      'Ton kho'
-    );
+  const handleExportExcel = async () => {
+    try {
+      const res = await inventoryService.list({
+        keyword: filters.keyword,
+        warehouse_id: filters.warehouse_id ? Number(filters.warehouse_id) : undefined,
+        category: filters.category,
+        supplier: filters.supplier,
+        batch: filters.batch,
+      });
+      const fullData = res.data?.data || [];
+      const sorted = [...fullData].sort((a: any, b: any) =>
+        (a.product_name || '').localeCompare(b.product_name || '', 'vi')
+      );
+      exportToExcel(
+        [
+          { title: 'STT', dataIndex: 'index' },
+          { title: 'Tên sản phẩm', dataIndex: 'product_name' },
+          { title: 'Đơn vị', dataIndex: 'small_unit', render: (u: any) => u?.label || '' },
+          { title: 'Kho', dataIndex: 'warehouse_name' },
+          { title: 'Loại sản phẩm', dataIndex: 'category' },
+          { title: 'NCC', dataIndex: 'supplier' },
+          { title: 'Lô', dataIndex: 'batch' },
+          {
+            title: 'Hạn dùng',
+            dataIndex: 'nearest_expiry',
+            render: (v: string) => (v ? formatDate(v) : ''),
+          },
+          {
+            title: 'Tồn',
+            dataIndex: 'stock_pieces',
+            render: (val: number, record: any) =>
+              formatCartonPiecesPlain(val, record.units_per_carton, record.small_unit?.label),
+          },
+        ],
+        sorted,
+        `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
+        'Ton kho'
+      );
+    } catch (e: any) {
+      error({
+        message: 'Lỗi xuất Excel',
+        description: e?.response?.data?.message || 'Không thể xuất',
+      });
+    }
   };
+
+  const filterSummary = (() => {
+    const parts: { label: string; value: string }[] = [];
+    if (filters.warehouse_id) {
+      const wid = Number(filters.warehouse_id);
+      const fromAll = (warehouseListRes?.data || []).find((o: any) => o.id === wid);
+      const fromOpts = filterOptions.warehouses.find((o: any) => o.value === wid);
+      const label = fromAll?.label || fromOpts?.label || `#${wid}`;
+      parts.push({ label: 'Kho', value: label });
+    }
+    if (filters.category) parts.push({ label: 'Loại sản phẩm', value: filters.category });
+    if (filters.supplier) parts.push({ label: 'NCC', value: filters.supplier });
+    if (filters.batch) parts.push({ label: 'Lô', value: filters.batch });
+    if (filters.keyword) parts.push({ label: 'Tìm kiếm nhanh', value: `"${filters.keyword}"` });
+    return parts;
+  })();
 
   const columns = [
     sttColumn,
@@ -123,10 +168,12 @@ const InventoryPage = () => {
       key: 'product_name',
       sorter: true,
       sortOrder: (sort.sort_by === 'product_name'
-        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        ? sort.sort_order === 'asc'
+          ? 'ascend'
+          : 'descend'
         : null) as SortOrder,
       render: (text: string, record: any) => (
-        <div>
+        <div className="w-[200px]">
           <div className="font-bold">{text}</div>
           {record.small_unit?.label && (
             <div className="text-xs text-gray-500">{record.small_unit.label}</div>
@@ -140,7 +187,9 @@ const InventoryPage = () => {
       key: 'warehouse_name',
       sorter: true,
       sortOrder: (sort.sort_by === 'warehouse_name'
-        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        ? sort.sort_order === 'asc'
+          ? 'ascend'
+          : 'descend'
         : null) as SortOrder,
     },
     {
@@ -163,7 +212,9 @@ const InventoryPage = () => {
       align: 'center' as const,
       sorter: true,
       sortOrder: (sort.sort_by === 'nearest_expiry'
-        ? sort.sort_order === 'asc' ? 'ascend' : 'descend'
+        ? sort.sort_order === 'asc'
+          ? 'ascend'
+          : 'descend'
         : null) as SortOrder,
       render: (date: string) => renderExpiryTag(date),
     },
@@ -211,7 +262,7 @@ const InventoryPage = () => {
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={6}>
-              <Form.Item name="supplier" label="Nhà cung cấp">
+              <Form.Item name="supplier" label="NCC">
                 <AppSelect
                   allowClear
                   showSearch
@@ -242,10 +293,13 @@ const InventoryPage = () => {
           <Row gutter={[24, 16]} align="bottom">
             <Col xs={24} md={16}>
               <Form.Item name="keyword" label="Tìm kiếm nhanh" className="mb-0">
-                <AppInput
+                <AppAutoComplete
                   placeholder="Nhập tên sản phẩm..."
-                  prefix={<FiSearch />}
-                  onChange={e => setKeywordInput(e.target.value)}
+                  options={productNameOpts}
+                  filterOption={(i, o) =>
+                    ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
+                  }
+                  onChange={(v: any) => setKeywordInput(typeof v === 'string' ? v : '')}
                 />
               </Form.Item>
             </Col>
@@ -279,15 +333,55 @@ const InventoryPage = () => {
         totalLabel="Số sản phẩm tồn"
         totalCount={dataSource.length}
         extraActions={
-          <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
-            Xuất Excel
-          </AppButton>
+          <>
+            {isFiltering ? (
+              <Popconfirm
+                title="Xuất Excel với bộ lọc hiện tại?"
+                description={
+                  <div style={{ maxWidth: 320 }}>
+                    <div className="mb-1">Sẽ xuất data theo filter:</div>
+                    <ul className="pl-4 m-0 list-disc">
+                      {filterSummary.map(f => (
+                        <li key={f.label} className="break-words">
+                          <span className="font-medium">{f.label}:</span> {f.value}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                }
+                onConfirm={handleExportExcel}
+                okText="Xuất"
+                cancelText="Hủy"
+              >
+                <AppButton icon={<FiDownload />} type="default">
+                  Xuất Excel
+                </AppButton>
+              </Popconfirm>
+            ) : (
+              <AppButton icon={<FiDownload />} type="default" onClick={handleExportExcel}>
+                Xuất Excel
+              </AppButton>
+            )}
+            <AppButton icon={<FiRepeat />} type="primary" onClick={() => setTransferOpen(true)}>
+              Chuyển kho
+            </AppButton>
+          </>
         }
         columns={columns}
         dataSource={dataSource}
         loading={isLoading}
         scroll={{ x: 1200 }}
         onChange={handleTableChange}
+      />
+
+      <TransferModal
+        open={transferOpen}
+        inventoryList={dataSource}
+        warehouseOptions={(warehouseListRes?.data || []).map((w: any) => ({
+          label: w.label,
+          value: w.id,
+        }))}
+        onClose={() => setTransferOpen(false)}
       />
     </div>
   );

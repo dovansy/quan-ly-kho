@@ -114,23 +114,36 @@ export class StockImportController {
     if (!row) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy bản ghi nhập', 404); return; }
 
     const {
+      category,
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity, units_per_carton, piece_quantity,
       expiry_date, import_date, note,
     } = req.body;
 
     try {
-      await row.update({
-        warehouse_id: warehouse_id ?? row.warehouse_id,
-        supplier: supplier ?? row.supplier,
-        batch: batch ?? row.batch,
-        small_unit_id: small_unit_id ?? row.small_unit_id,
-        carton_quantity: carton_quantity ?? row.carton_quantity,
-        units_per_carton: units_per_carton ?? row.units_per_carton,
-        piece_quantity: piece_quantity ?? row.piece_quantity,
-        expiry_date: expiry_date ?? row.expiry_date,
-        import_date: import_date ?? row.import_date,
-        note: note ?? row.note,
+      await sequelize.transaction(async (t) => {
+        if (category !== undefined) {
+          const product = await Product.findByPk(row.product_id, { transaction: t });
+          if (product) {
+            const next = category || null;
+            if ((product.category ?? null) !== next) {
+              await product.update({ category: next }, { transaction: t });
+            }
+          }
+        }
+
+        await row.update({
+          warehouse_id: warehouse_id ?? row.warehouse_id,
+          supplier: supplier ?? row.supplier,
+          batch: batch ?? row.batch,
+          small_unit_id: small_unit_id ?? row.small_unit_id,
+          carton_quantity: carton_quantity ?? row.carton_quantity,
+          units_per_carton: units_per_carton ?? row.units_per_carton,
+          piece_quantity: piece_quantity ?? row.piece_quantity,
+          expiry_date: expiry_date ?? row.expiry_date,
+          import_date: import_date ?? row.import_date,
+          note: note ?? row.note,
+        }, { transaction: t });
       });
     } catch (err: any) {
       if (err?.original?.message?.includes('chk_ib_stock_nonneg')) {

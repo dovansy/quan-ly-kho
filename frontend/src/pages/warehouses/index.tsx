@@ -7,7 +7,12 @@ import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels } from '@/constants/options';
 import { Status } from '@/constants/enums';
-import { useGetWarehouses, useCreateWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/hooks/api/warehouses';
+import {
+  useGetWarehouses,
+  useCreateWarehouse,
+  useUpdateWarehouse,
+  useDeleteWarehouse,
+} from '@/hooks/api/warehouses';
 import { sttColumn } from '@/utils/tableColumns';
 import { formatNumber } from '@/utils/format';
 import { Col, Form, Row, Tag } from 'antd';
@@ -43,7 +48,8 @@ const WarehousesPage = () => {
     productCount: Number(w.productCount) || 0,
   }));
 
-  const loading = isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const loading =
+    isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const onSearch = (values: any) => {
     setFilters({ keyword: values.keyword, status: values.status });
@@ -112,6 +118,7 @@ const WarehousesPage = () => {
       title: 'Tên kho',
       dataIndex: 'name',
       key: 'name',
+      width: '400px',
       render: (text: string) => <span className="font-bold">{text}</span>,
     },
     { title: 'Địa chỉ', dataIndex: 'address', key: 'address' },

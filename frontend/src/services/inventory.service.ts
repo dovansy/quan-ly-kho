@@ -36,10 +36,58 @@ export interface InventoryFilterOptions {
   batches: { label: string; value: string }[];
 }
 
+export interface TransferInventoryRequest {
+  product_id: number;
+  warehouse_id_from: number;
+  warehouse_id_to: number;
+  supplier: string;
+  batch: string;
+  quantity: number;
+  note?: string;
+}
+
+export interface InventoryTransferRecord {
+  id: number;
+  key: string;
+  product_id: number;
+  product_name: string;
+  category: string | null;
+  warehouse_id_from: number;
+  warehouse_from_name: string;
+  warehouse_id_to: number;
+  warehouse_to_name: string;
+  supplier: string;
+  batch: string;
+  quantity: number;
+  units_per_carton: number | null;
+  small_unit: { id: number; code: string; label: string } | null;
+  transferred_by: string | null;
+  transfer_date: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface TransferFilters {
+  keyword?: string;
+  warehouse_id_from?: number;
+  warehouse_id_to?: number;
+  supplier?: string;
+  batch?: string;
+  transferDate?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const inventoryService = {
   list: (params?: InventoryFilters) =>
     httpClient.get<APIResponse<InventoryItem[]>>('/inventory', { params }),
 
   filters: (params?: InventoryFilters) =>
     httpClient.get<APIResponse<InventoryFilterOptions>>('/inventory/filters', { params }),
+
+  transfer: (data: TransferInventoryRequest) =>
+    httpClient.post<APIResponse<null>>('/inventory/transfer', data),
+
+  transfers: (params?: TransferFilters) =>
+    httpClient.get<APIResponse<InventoryTransferRecord[]>>('/inventory/transfers', { params }),
 };

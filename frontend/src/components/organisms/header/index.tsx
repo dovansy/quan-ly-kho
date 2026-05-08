@@ -15,8 +15,8 @@ const Header = () => {
       <div className="container">
         <Flex justify="between" className="header-wrap">
           <Row className="nav">
-            <Button href="#" type="link" className="logo">
-              Logo
+            <Button href="/" type="link" className="logo">
+              <img src="/logo.png" alt="Logo" className="h-10" />
             </Button>
             <Flex className="user-info" align="center" gap={8}>
               <Avatar icon={<FiUser />} />

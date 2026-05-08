@@ -2,6 +2,7 @@ import { Col, Form, Row } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
+import { AppAutoComplete } from '@/components/atoms/AppAutoComplete';
 import { AppButton } from '@/components/atoms/AppButton';
 import { AppDatePicker } from '@/components/atoms/AppDatepicker';
 import { AppInput } from '@/components/atoms/AppInput';
@@ -11,7 +12,7 @@ import { useAppNotification } from '@/components/templates/notification';
 import { DATE_FORMAT } from '@/constants/format';
 import { SaleType } from '@/constants/enums';
 import { paidOptions, saleTypeLabels } from '@/constants/options';
-import { useCreateSale, useUpdateSale } from '@/hooks/api/sales';
+import { useCreateSale, useGetSales, useUpdateSale } from '@/hooks/api/sales';
 import { formatCurrency, toApiDate } from '@/utils/format';
 import { createEmptyLine, findInventoryFor, SaleLine, SaleOrderRow } from '../types';
 import { SaleLineRow } from './SaleLineRow';
@@ -49,6 +50,17 @@ export const SaleFormModal = ({
       })),
     [inventoryList]
   );
+
+  const { data: brokerSalesRes } = useGetSales({ sale_type: SaleType.BROKER, limit: 1000 });
+  const brokerNameOpts = useMemo(() => {
+    const set = new Set<string>();
+    (brokerSalesRes?.data || []).forEach((s: any) => {
+      if (s.broker_name) set.add(s.broker_name);
+    });
+    return Array.from(set)
+      .sort((a, b) => a.localeCompare(b, 'vi'))
+      .map(n => ({ label: n, value: n }));
+  }, [brokerSalesRes]);
 
   useEffect(() => {
     if (!open) return;
@@ -287,7 +299,13 @@ export const SaleFormModal = ({
                 label="Tên nhà môi giới"
                 rules={[{ required: true, message: 'Vui lòng nhập tên nhà môi giới' }]}
               >
-                <AppInput placeholder="Tên nhà môi giới" />
+                <AppAutoComplete
+                  placeholder="Nhập hoặc chọn nhà môi giới"
+                  options={brokerNameOpts}
+                  filterOption={(i, o) =>
+                    ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
+                  }
+                />
               </Form.Item>
             </Col>
           </Row>

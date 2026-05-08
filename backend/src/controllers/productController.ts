@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op, fn, col } from 'sequelize';
+import { Op, fn, col, literal } from 'sequelize';
 import { Product, SmallUnit } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
@@ -27,6 +27,16 @@ export class ProductController {
 
     const { count, rows } = await Product.findAndCountAll({
       where,
+      attributes: {
+        include: [
+          [literal(`(
+            SELECT units_per_carton FROM stock_imports
+            WHERE product_id = Product.id
+            ORDER BY import_date DESC, id DESC
+            LIMIT 1
+          )`), 'units_per_carton'],
+        ],
+      },
       include: [{ model: SmallUnit, as: 'defaultSmallUnit' }],
       order,
       limit,
@@ -80,6 +90,7 @@ function formatProduct(p: any) {
     default_small_unit: json.defaultSmallUnit ? {
       id: json.defaultSmallUnit.id, code: json.defaultSmallUnit.code, label: json.defaultSmallUnit.label,
     } : null,
+    units_per_carton: json.units_per_carton != null ? Number(json.units_per_carton) : null,
     status: json.status,
     created_at: json.created_at,
     updated_at: json.updated_at,

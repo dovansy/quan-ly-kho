@@ -38,6 +38,8 @@ export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) =
   const cmp = (x: string, y: string) =>
     (x || '').trim().localeCompare((y || '').trim(), 'vi', { sensitivity: 'base', numeric: true });
   flat.sort((a, b) => {
+    const byDate = (b.sale_date || '').localeCompare(a.sale_date || '');
+    if (byDate !== 0) return byDate;
     const byCustomer = cmp(a.customer_name, b.customer_name);
     if (byCustomer !== 0) return byCustomer;
     return cmp(a.product_name, b.product_name);

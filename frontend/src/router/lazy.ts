@@ -9,4 +9,5 @@ export const AccountsPage = lazy(() => import('@/pages/accounts'));
 export const ProductsPage = lazy(() => import('@/pages/products'));
 export const WarehousesPage = lazy(() => import('@/pages/warehouses'));
 export const ImportsPage = lazy(() => import('@/pages/imports'));
+export const TransfersPage = lazy(() => import('@/pages/transfers'));
 export const SmallUnitsPage = lazy(() => import('@/pages/small-units'));

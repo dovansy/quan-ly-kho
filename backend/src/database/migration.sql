@@ -15,6 +15,7 @@ DROP TRIGGER IF EXISTS trg_se_after_update;
 DROP TRIGGER IF EXISTS trg_se_after_delete;
 
 -- Drop in reverse dependency order
+DROP TABLE IF EXISTS inventory_transfers;
 DROP TABLE IF EXISTS stock_exports;
 DROP TABLE IF EXISTS stock_imports;
 DROP TABLE IF EXISTS inventory_balance;
@@ -206,6 +207,31 @@ CREATE TABLE inventory_balance (
   CONSTRAINT fk_ib_product   FOREIGN KEY (product_id)   REFERENCES products(id)   ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_ib_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT chk_ib_stock_nonneg CHECK (stock_pieces >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ────────────────────────────────────────────────
+-- LOG: inventory_transfers (lịch sử chuyển kho)
+-- ────────────────────────────────────────────────
+CREATE TABLE inventory_transfers (
+  id INT NOT NULL AUTO_INCREMENT,
+  product_id INT NOT NULL,
+  warehouse_id_from INT NOT NULL,
+  warehouse_id_to INT NOT NULL,
+  supplier VARCHAR(255) NOT NULL,
+  batch VARCHAR(100) NOT NULL,
+  quantity INT NOT NULL,
+  transferred_by_user_id INT DEFAULT NULL,
+  transfer_date DATETIME NOT NULL,
+  note VARCHAR(500) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_it_date (transfer_date),
+  KEY idx_it_product (product_id),
+  CONSTRAINT fk_it_product FOREIGN KEY (product_id)        REFERENCES products(id)   ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_it_wh_from FOREIGN KEY (warehouse_id_from) REFERENCES warehouses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_it_wh_to   FOREIGN KEY (warehouse_id_to)   REFERENCES warehouses(id) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_it_user    FOREIGN KEY (transferred_by_user_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT chk_it_qty_pos CHECK (quantity > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ────────────────────────────────────────────────

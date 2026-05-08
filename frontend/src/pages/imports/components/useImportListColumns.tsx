@@ -28,10 +28,11 @@ const getSortOrder = (
 export const useImportListColumns = ({ onEdit, onDelete, sortBy, sortOrder }: Params) => [
   sttColumn,
   {
-    title: 'Tên SP',
+    title: 'Tên sản phẩm',
     dataIndex: 'product_name',
     key: 'product_name',
     sorter: true,
+    width: '200px',
     sortOrder: getSortOrder('product_name', sortBy, sortOrder),
     render: (t: string) => <span className="font-bold">{t}</span>,
   },

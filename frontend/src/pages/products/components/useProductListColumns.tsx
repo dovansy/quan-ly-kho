@@ -15,13 +15,16 @@ interface Params {
 export const useProductListColumns = ({ onEdit, sortBy, sortOrder }: Params) => [
   sttColumn,
   {
-    title: 'Tên SP',
+    title: 'Tên sản phẩm',
     dataIndex: 'name',
     key: 'name',
     sorter: true,
     sortOrder: (sortBy === 'name'
-      ? sortOrder === 'asc' ? 'ascend' : 'descend'
+      ? sortOrder === 'asc'
+        ? 'ascend'
+        : 'descend'
       : null) as AntSortOrder,
+    width: '200px',
     render: (t: string) => <span className="font-bold">{t}</span>,
   },
   {
@@ -41,6 +44,16 @@ export const useProductListColumns = ({ onEdit, sortBy, sortOrder }: Params) => 
     dataIndex: 'default_small_unit',
     key: 'default_small_unit',
     render: (u: any) => u?.label || '-',
+  },
+  {
+    title: 'Số lượng/kiện',
+    dataIndex: 'units_per_carton',
+    key: 'units_per_carton',
+    align: 'right' as const,
+    render: (upc: number | null, r: any) => {
+      if (!upc || upc <= 1) return '-';
+      return `${upc} ${r.default_small_unit?.label || ''} / kiện`.trim();
+    },
   },
   {
     title: 'Trạng thái',

@@ -74,7 +74,7 @@ export const NotificationProvider = ({ children }: NotificationProviderProps) =>
       rawApi.success({
         message: message ?? 'Success',
         className: classNames,
-        duration: 5000,
+        duration: 5,
         ...props,
       });
     },

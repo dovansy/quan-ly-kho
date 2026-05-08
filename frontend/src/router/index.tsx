@@ -20,6 +20,7 @@ import {
   ProductsPage,
   WarehousesPage,
   ImportsPage,
+  TransfersPage,
   SmallUnitsPage,
 } from '@/router/lazy';
 import { ROUTE_PATH } from '@/constants/app';
@@ -51,6 +52,7 @@ export default function AppContainer() {
                 <Route path={ROUTE_PATH.PRODUCTS} element={<ProductsPage />} />
                 <Route path={ROUTE_PATH.WAREHOUSES} element={<WarehousesPage />} />
                 <Route path={ROUTE_PATH.IMPORTS} element={<ImportsPage />} />
+                <Route path={ROUTE_PATH.TRANSFERS} element={<TransfersPage />} />
                 <Route path={ROUTE_PATH.SMALL_UNITS} element={<SmallUnitsPage />} />
               </Route>
             </Route>

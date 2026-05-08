@@ -114,6 +114,7 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
                 title: 'Tên sản phẩm',
                 dataIndex: 'product_name',
                 key: 'product_name',
+                width: '200px',
                 sorter: (a: any, b: any) =>
                   (a.product_name || '').localeCompare(b.product_name || '', 'vi'),
               },
