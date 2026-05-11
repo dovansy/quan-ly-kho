@@ -33,6 +33,7 @@ app.use(helmet());
 app.use(cors({
   origin: [
     'http://localhost:5173',
+    'http://localhost:5174',
     'https://quanlykhosy.vercel.app'
   ],
   credentials: true,

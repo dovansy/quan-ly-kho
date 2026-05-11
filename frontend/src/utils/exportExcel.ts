@@ -18,7 +18,8 @@ export function exportToExcel(
   columns: ExcelColumn[],
   data: any[],
   fileName: string,
-  sheetName = 'Data'
+  sheetName = 'Data',
+  merges?: { s: { r: number; c: number }; e: { r: number; c: number } }[]
 ) {
   const headers = columns.map(col => col.title);
 
@@ -31,6 +32,10 @@ export function exportToExcel(
   );
 
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+  if (merges && merges.length > 0) {
+    ws['!merges'] = merges;
+  }
 
   const headerStyle = {
     fill: { fgColor: { rgb: '729fcf' } },

@@ -111,6 +111,43 @@ const InventoryPage = () => {
       const sorted = [...fullData].sort((a: any, b: any) =>
         (a.product_name || '').localeCompare(b.product_name || '', 'vi')
       );
+
+      const productTotals: Record<string, number> = {};
+      sorted.forEach((item: any) => {
+        const name = item.product_name || 'Khác';
+        if (!productTotals[name]) productTotals[name] = 0;
+        productTotals[name] += item.stock_pieces || 0;
+      });
+
+      let currentProductName = '';
+      sorted.forEach((item: any) => {
+        const name = item.product_name || 'Khác';
+        if (name !== currentProductName) {
+          const totalVal = productTotals[name];
+          item.total = formatCartonPiecesPlain(totalVal, item.units_per_carton, item.small_unit?.label);
+          currentProductName = name;
+        } else {
+          item.total = '';
+        }
+      });
+
+      const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+      let mergeStartIdx = 0;
+      for (let i = 1; i <= sorted.length; i++) {
+        const name = sorted[i]?.product_name || '';
+        const prevName = sorted[i - 1]?.product_name || 'Khác';
+        
+        if (i === sorted.length || name !== prevName) {
+          if (i - 1 > mergeStartIdx) {
+            merges.push({
+              s: { r: mergeStartIdx + 1, c: 9 },
+              e: { r: i - 1 + 1, c: 9 },
+            });
+          }
+          mergeStartIdx = i;
+        }
+      }
+
       exportToExcel(
         [
           { title: 'STT', dataIndex: 'index' },
@@ -131,10 +168,15 @@ const InventoryPage = () => {
             render: (val: number, record: any) =>
               formatCartonPiecesPlain(val, record.units_per_carton, record.small_unit?.label),
           },
+          {
+            title: 'Tổng',
+            dataIndex: 'total',
+          },
         ],
         sorted,
         `Ton_kho_${dayjs().format('YYYYMMDD_HHmmss')}`,
-        'Ton kho'
+        'Ton kho',
+        merges
       );
     } catch (e: any) {
       error({
