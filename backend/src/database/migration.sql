@@ -157,6 +157,7 @@ CREATE TABLE sale_orders (
   sale_type ENUM('wholesale', 'retail', 'broker') NOT NULL,
   total_amount DECIMAL(15, 2) NOT NULL DEFAULT 0,
   paid TINYINT(1) NOT NULL DEFAULT 0,
+  payment_status ENUM('paid','unpaid','pending') NOT NULL DEFAULT 'unpaid',
   sale_date DATE NOT NULL,
   returned TINYINT(1) NOT NULL DEFAULT 0,
   returned_at DATETIME DEFAULT NULL,
@@ -183,6 +184,7 @@ CREATE TABLE stock_exports (
   quantity INT NOT NULL DEFAULT 0,
   unit_price DECIMAL(15, 2) NOT NULL DEFAULT 0,
   total DECIMAL(15, 2) NOT NULL DEFAULT 0,
+  is_pending TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   KEY idx_se_sale_order (sale_order_id),
   KEY idx_se_group (product_id, warehouse_id, supplier, batch),
@@ -320,14 +322,16 @@ BEGIN
     AND supplier     = OLD.supplier     AND batch        = OLD.batch;
 END$$
 
--- INSERT dòng xuất → trừ
+-- INSERT dòng xuất → trừ (skip nếu is_pending=1)
 CREATE TRIGGER trg_se_after_insert
 AFTER INSERT ON stock_exports FOR EACH ROW
 BEGIN
-  UPDATE inventory_balance
-  SET stock_pieces = stock_pieces - NEW.quantity, updated_at = NOW()
-  WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
-    AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+  IF NEW.is_pending = 0 THEN
+    UPDATE inventory_balance
+    SET stock_pieces = stock_pieces - NEW.quantity, updated_at = NOW()
+    WHERE product_id   = NEW.product_id   AND warehouse_id = NEW.warehouse_id
+      AND supplier     = NEW.supplier     AND batch        = NEW.batch;
+  END IF;
 END$$
 
 -- UPDATE dòng xuất → điều chỉnh delta
@@ -354,14 +358,16 @@ BEGIN
   END IF;
 END$$
 
--- DELETE dòng xuất → cộng trả
+-- DELETE dòng xuất → cộng trả (skip nếu is_pending=1)
 CREATE TRIGGER trg_se_after_delete
 AFTER DELETE ON stock_exports FOR EACH ROW
 BEGIN
-  UPDATE inventory_balance
-  SET stock_pieces = stock_pieces + OLD.quantity, updated_at = NOW()
-  WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
-    AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+  IF OLD.is_pending = 0 THEN
+    UPDATE inventory_balance
+    SET stock_pieces = stock_pieces + OLD.quantity, updated_at = NOW()
+    WHERE product_id   = OLD.product_id   AND warehouse_id = OLD.warehouse_id
+      AND supplier     = OLD.supplier     AND batch        = OLD.batch;
+  END IF;
 END$$
 
 DELIMITER ;

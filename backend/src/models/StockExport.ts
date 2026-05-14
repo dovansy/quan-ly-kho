@@ -12,9 +12,10 @@ interface StockExportAttributes {
   quantity: number;
   unit_price: number;
   total: number;
+  is_pending: boolean;
 }
 
-type StockExportCreation = Optional<StockExportAttributes, 'id' | 'quantity' | 'unit_price' | 'total'>;
+type StockExportCreation = Optional<StockExportAttributes, 'id' | 'quantity' | 'unit_price' | 'total' | 'is_pending'>;
 
 export class StockExport extends Model<StockExportAttributes, StockExportCreation> {
   declare id: number;
@@ -27,6 +28,7 @@ export class StockExport extends Model<StockExportAttributes, StockExportCreatio
   declare quantity: number;
   declare unit_price: number;
   declare total: number;
+  declare is_pending: boolean;
 }
 
 StockExport.init(
@@ -41,6 +43,7 @@ StockExport.init(
     quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
     unit_price: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
     total: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
+    is_pending: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   },
   { sequelize, tableName: 'stock_exports', timestamps: false },
 );

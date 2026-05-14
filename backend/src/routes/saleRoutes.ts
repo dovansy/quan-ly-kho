@@ -19,6 +19,7 @@ export function SaleRoutes(): Router {
   router.post('/', validate(createSaleSchema), c.create);
   router.put('/:id', validate(updateSaleSchema), c.update);
   router.post('/:id/return', c.returnOrder);
+  router.post('/:id/confirm-shipment', c.confirmShipment);
   router.delete('/:id', c.remove);
 
   return router;

@@ -11,6 +11,7 @@ interface SaleOrderAttributes {
   sale_type: 'wholesale' | 'retail' | 'broker';
   total_amount: number;
   paid: boolean;
+  payment_status: 'paid' | 'unpaid' | 'pending';
   sale_date: Date;
   returned: boolean;
   returned_at: Date | null;
@@ -26,6 +27,7 @@ type SaleOrderCreation = Optional<
   | 'broker_name'
   | 'total_amount'
   | 'paid'
+  | 'payment_status'
   | 'returned'
   | 'returned_at'
   | 'created_by_user_id'
@@ -41,6 +43,7 @@ export class SaleOrder extends Model<SaleOrderAttributes, SaleOrderCreation> {
   declare sale_type: 'wholesale' | 'retail' | 'broker';
   declare total_amount: number;
   declare paid: boolean;
+  declare payment_status: 'paid' | 'unpaid' | 'pending';
   declare sale_date: Date;
   declare returned: boolean;
   declare returned_at: Date | null;
@@ -62,6 +65,11 @@ SaleOrder.init(
     sale_type: { type: DataTypes.ENUM('wholesale', 'retail', 'broker'), allowNull: false },
     total_amount: { type: DataTypes.DECIMAL(15, 2), defaultValue: 0 },
     paid: { type: DataTypes.BOOLEAN, defaultValue: false },
+    payment_status: {
+      type: DataTypes.ENUM('paid', 'unpaid', 'pending'),
+      allowNull: false,
+      defaultValue: 'unpaid',
+    },
     sale_date: { type: DataTypes.DATEONLY, allowNull: false },
     returned: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     returned_at: { type: DataTypes.DATE, allowNull: true },

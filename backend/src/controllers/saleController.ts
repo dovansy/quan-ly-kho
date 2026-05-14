@@ -20,14 +20,15 @@ export class SaleController {
   list = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
-    const { keyword, paid, saleDate, sale_type, sort_by, sort_order } = req.query as Record<string, string>;
+    const { keyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order } = req.query as Record<string, string>;
 
     const where: any = {};
     if (keyword) where[Op.or] = [
       { customer_name: { [Op.like]: `%${keyword}%` } },
       { invoice_code: { [Op.like]: `%${keyword}%` } },
     ];
-    if (paid !== undefined && paid !== '') where.paid = paid === 'true';
+    if (payment_status) where.payment_status = payment_status;
+    else if (paid !== undefined && paid !== '') where.payment_status = paid === 'true' ? 'paid' : 'unpaid';
     if (saleDate) where.sale_date = saleDate;
     if (sale_type) where.sale_type = sale_type;
 
@@ -40,7 +41,7 @@ export class SaleController {
     } else if (sort_by === 'total_amount') {
       order = [['total_amount', dir]];
     } else if (sort_by === 'status') {
-      order = [[literal('CASE WHEN returned = 1 THEN 1 WHEN paid = 1 THEN 2 ELSE 0 END'), dir]];
+      order = [[literal("CASE WHEN returned = 1 THEN 3 WHEN payment_status = 'pending' THEN 0 WHEN payment_status = 'paid' THEN 2 ELSE 1 END"), dir]];
     }
 
     const { count, rows } = await SaleOrder.findAndCountAll({
@@ -62,12 +63,15 @@ export class SaleController {
   };
 
   create = async (req: Request, res: Response): Promise<void> => {
-    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, saleDate } = req.body;
+    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, paymentStatus, saleDate } = req.body;
     const userId = req.user?.userId || null;
 
     if (!Array.isArray(items) || items.length === 0) {
       sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
     }
+
+    const status = normalizePaymentStatus(paymentStatus, paid);
+    const isPending = status === 'pending';
 
     const totalAmount = (items as ExportPayload[]).reduce(
       (sum, i) => sum + Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)), 0,
@@ -86,7 +90,8 @@ export class SaleController {
           broker_name: saleType === 'broker' ? (brokerName || null) : null,
           sale_type: saleType,
           total_amount: totalAmount,
-          paid: !!paid,
+          paid: status === 'paid',
+          payment_status: status,
           sale_date: saleDate || new Date(),
           created_by_user_id: userId,
         }, { transaction: t });
@@ -102,6 +107,7 @@ export class SaleController {
             quantity: Number(i.quantity || 0),
             unit_price: Number(i.unit_price || 0),
             total: Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)),
+            is_pending: isPending,
           })),
           { transaction: t },
         );
@@ -121,7 +127,7 @@ export class SaleController {
 
   update = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, saleDate } = req.body;
+    const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, paymentStatus, saleDate } = req.body;
 
     const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
@@ -134,15 +140,18 @@ export class SaleController {
       sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
     }
 
+    const status = normalizePaymentStatus(paymentStatus, paid, order.payment_status);
+    const isPending = status === 'pending';
+
     const totalAmount = (items as ExportPayload[]).reduce(
       (sum, i) => sum + Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)), 0,
     );
 
     try {
       await sequelize.transaction(async (t) => {
-        // Trừ items cũ khỏi balance trước (qua trigger DELETE)
+        // Trừ items cũ khỏi balance (trigger DELETE chỉ chạy khi is_pending=0).
+        // Đồng thời clear pending reservation của đơn này khỏi assertStockAvailable kế tiếp.
         await StockExport.destroy({ where: { sale_order_id: id }, transaction: t });
-        // Check tồn sau khi đã restore
         await assertStockAvailable(items, t);
 
         await order.update({
@@ -152,7 +161,8 @@ export class SaleController {
           broker_name: saleType === 'broker' ? (brokerName || null) : null,
           sale_type: saleType,
           total_amount: totalAmount,
-          paid: !!paid,
+          paid: status === 'paid',
+          payment_status: status,
           sale_date: saleDate,
         }, { transaction: t });
 
@@ -167,6 +177,7 @@ export class SaleController {
             quantity: Number(i.quantity || 0),
             unit_price: Number(i.unit_price || 0),
             total: Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)),
+            is_pending: isPending,
           })),
           { transaction: t },
         );
@@ -197,6 +208,63 @@ export class SaleController {
     sendSuccess(res, null, 'Xóa hóa đơn thành công');
   };
 
+  confirmShipment = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { paymentStatus } = req.body as { paymentStatus?: string };
+    const nextStatus = paymentStatus === 'paid' ? 'paid' : 'unpaid';
+
+    const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
+    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
+    if (order.returned) {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Đơn đã hoàn hàng', 400); return;
+    }
+    if (order.payment_status !== 'pending') {
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Đơn không ở trạng thái Chờ xuất hàng', 400); return;
+    }
+
+    const items = (order.items as any[] | undefined) || [];
+    if (items.length === 0) {
+      sendError(res, ErrorCode.REQUIRED, 'Đơn không có dòng nào', 400); return;
+    }
+
+    try {
+      await sequelize.transaction(async (t) => {
+        // Items hiện đang is_pending=1 — destroy không trừ kho (trigger skip)
+        await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
+        await assertStockAvailable(items as ExportPayload[], t);
+
+        await order.update({
+          paid: nextStatus === 'paid',
+          payment_status: nextStatus,
+        }, { transaction: t });
+
+        await StockExport.bulkCreate(
+          items.map((i: any) => ({
+            sale_order_id: order.id,
+            product_id: i.product_id,
+            warehouse_id: i.warehouse_id,
+            supplier: i.supplier,
+            batch: i.batch,
+            small_unit_id: i.small_unit_id,
+            quantity: Number(i.quantity || 0),
+            unit_price: Number(i.unit_price || 0),
+            total: Number(i.total || 0),
+            is_pending: false,
+          })),
+          { transaction: t },
+        );
+      });
+
+      const refreshed = await fetchOrder(order.id);
+      sendSuccess(res, formatOrder(refreshed!), 'Xác nhận xuất hàng thành công');
+    } catch (err) {
+      if (err instanceof BusinessError) {
+        sendError(res, err.errorCode, err.message, err.status); return;
+      }
+      throw err;
+    }
+  };
+
   returnOrder = async (req: Request, res: Response): Promise<void> => {
     const order = await SaleOrder.findByPk(req.params.id);
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
@@ -213,6 +281,19 @@ export class SaleController {
     const refreshed = await fetchOrder(order.id);
     sendSuccess(res, formatOrder(refreshed!), 'Hoàn hàng thành công');
   };
+}
+
+function normalizePaymentStatus(
+  paymentStatus: unknown,
+  paid: unknown,
+  fallback: 'paid' | 'unpaid' | 'pending' = 'unpaid',
+): 'paid' | 'unpaid' | 'pending' {
+  if (paymentStatus === 'paid' || paymentStatus === 'unpaid' || paymentStatus === 'pending') {
+    return paymentStatus;
+  }
+  if (paid === true || paid === 'true' || paid === 1) return 'paid';
+  if (paid === false || paid === 'false' || paid === 0) return 'unpaid';
+  return fallback;
 }
 
 class BusinessError extends Error {
@@ -238,11 +319,21 @@ async function assertStockAvailable(items: ExportPayload[], t: Transaction): Pro
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-    const available = balance?.stock_pieces || 0;
+    const raw = balance?.stock_pieces || 0;
+    const pendingSum = (await StockExport.sum('quantity', {
+      where: {
+        is_pending: true,
+        product_id: Number(product_id),
+        warehouse_id: Number(warehouse_id),
+        supplier, batch,
+      },
+      transaction: t,
+    })) || 0;
+    const available = raw - pendingSum;
     if (available < needed) {
       throw new BusinessError(
         ErrorCode.EMPTY, 400,
-        `Tồn không đủ cho lô "${batch}" (NCC ${supplier}): còn ${available}, cần ${needed}`,
+        `Tồn không đủ cho lô "${batch}" (NCC ${supplier}): khả dụng ${available} (tồn ${raw} - đang chờ xuất ${pendingSum}), cần ${needed}`,
       );
     }
   }
@@ -289,6 +380,7 @@ function formatOrder(o: any) {
     sale_type: json.sale_type,
     total_amount: Number(json.total_amount),
     paid: Boolean(json.paid),
+    payment_status: json.payment_status || (json.paid ? 'paid' : 'unpaid'),
     sale_date: json.sale_date,
     returned: Boolean(json.returned),
     returned_at: json.returned_at || null,

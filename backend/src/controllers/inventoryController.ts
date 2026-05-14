@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op, fn, col, literal } from 'sequelize';
 import sequelize from '../models/index';
-import { InventoryBalance, InventoryTransfer, Product, Warehouse, SmallUnit, User } from '../models';
+import { InventoryBalance, InventoryTransfer, Product, Warehouse, SmallUnit, StockExport, User } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
 
@@ -13,8 +13,9 @@ export class InventoryController {
   list = async (req: Request, res: Response): Promise<void> => {
     const {
       warehouse_id, category, supplier, batch, keyword,
-      includeEmpty, sort_by, sort_order,
+      includeEmpty, exclude_pending_sale_order_id, sort_by, sort_order,
     } = req.query as Record<string, string>;
+    const excludeSaleOrderId = Number(exclude_pending_sale_order_id) || 0;
 
     const where: any = {};
     if (warehouse_id) where.warehouse_id = Number(warehouse_id);
@@ -49,6 +50,15 @@ export class InventoryController {
                      import_date DESC, id DESC
             LIMIT 1
           )`), 'units_per_carton'],
+          [literal(`(
+            SELECT COALESCE(SUM(quantity), 0) FROM stock_exports
+            WHERE is_pending = 1
+              AND product_id = InventoryBalance.product_id
+              AND warehouse_id = InventoryBalance.warehouse_id
+              AND supplier = InventoryBalance.supplier
+              AND batch = InventoryBalance.batch
+              ${excludeSaleOrderId ? `AND sale_order_id <> ${excludeSaleOrderId}` : ''}
+          )`), 'pending_reserved'],
         ],
       },
       include: [
@@ -190,7 +200,18 @@ export class InventoryController {
           lock: t.LOCK.UPDATE,
         });
         if (!source) throw new Error('NOT_FOUND_SOURCE');
-        if (source.stock_pieces < qty) throw new Error('INSUFFICIENT_STOCK');
+        // Trừ hàng đang chờ xuất ra khỏi tồn khả dụng để chuyển kho
+        const pendingSum = (await StockExport.sum('quantity', {
+          where: {
+            is_pending: true,
+            product_id: Number(product_id),
+            warehouse_id: Number(warehouse_id_from),
+            supplier, batch,
+          },
+          transaction: t,
+        })) || 0;
+        const availableForTransfer = source.stock_pieces - pendingSum;
+        if (availableForTransfer < qty) throw new Error('INSUFFICIENT_STOCK');
 
         await source.update(
           { stock_pieces: source.stock_pieces - qty },
@@ -354,6 +375,9 @@ function format(row: any) {
   const json = row.toJSON ? row.toJSON() : row;
   const product = json.product || {};
   const smallUnit = product.defaultSmallUnit || null;
+  const rawStock = Number(json.stock_pieces) || 0;
+  const pendingReserved = Number(json.pending_reserved) || 0;
+  const available = Math.max(0, rawStock - pendingReserved);
   return {
     id: json.id,
     key: String(json.id),
@@ -364,7 +388,9 @@ function format(row: any) {
     warehouse_name: json.warehouse?.name || null,
     supplier: json.supplier,
     batch: json.batch,
-    stock_pieces: json.stock_pieces,
+    stock_pieces: rawStock,
+    available_pieces: available,
+    pending_reserved: pendingReserved,
     units_per_carton: json.units_per_carton != null ? Number(json.units_per_carton) : null,
     nearest_expiry: json.nearest_expiry,
     small_unit: smallUnit ? { id: smallUnit.id, code: smallUnit.code, label: smallUnit.label } : null,
