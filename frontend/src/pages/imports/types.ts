@@ -16,4 +16,7 @@ export interface ImportRecord {
   expiry_date: string;
   imported_by: string | null;
   import_date: string;
+  input_total_pieces?: number | null;
+  units_per_box?: number | null;
+  boxes_per_carton?: number | null;
 }

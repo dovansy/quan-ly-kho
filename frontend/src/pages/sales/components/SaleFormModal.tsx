@@ -11,9 +11,10 @@ import { CrudModal } from '@/components/organisms/crud-modal';
 import { useAppNotification } from '@/components/templates/notification';
 import { DATE_FORMAT } from '@/constants/format';
 import { SaleType } from '@/constants/enums';
-import { paidOptions, saleTypeLabels } from '@/constants/options';
+import { paymentStatusOptions, saleTypeLabels } from '@/constants/options';
+import { PaymentStatus } from '@/constants/enums';
 import { useCreateSale, useGetSales, useUpdateSale } from '@/hooks/api/sales';
-import { formatCurrency, toApiDate } from '@/utils/format';
+import { formatCartonPiecesPlain, formatCurrency, toApiDate } from '@/utils/format';
 import { createEmptyLine, findInventoryFor, SaleLine, SaleOrderRow } from '../types';
 import { SaleLineRow } from './SaleLineRow';
 
@@ -43,11 +44,20 @@ export const SaleFormModal = ({
 
   const inventoryOptions = useMemo(
     () =>
-      inventoryList.map((it: any) => ({
-        label: `${it.product_name} — ${it.warehouse_name} | NCC: ${it.supplier} | Lô: ${it.batch} (Tồn: ${it.stock_pieces} ${it.small_unit?.label || ''})`,
-        value: it.id,
-        record: it,
-      })),
+      inventoryList.map((it: any) => {
+        const unit = it.small_unit?.label || '';
+        const upc = Number(it.units_per_carton) || 0;
+        const pending = Number(it.pending_reserved) || 0;
+        const available = Number(it.available_pieces ?? it.stock_pieces) || 0;
+        const availableStr = formatCartonPiecesPlain(available, upc, unit);
+        const pendingHint =
+          pending > 0 ? ` — chờ xuất: ${formatCartonPiecesPlain(pending, upc, unit)}` : '';
+        return {
+          label: `${it.product_name} — ${it.warehouse_name} | ${it.supplier} | Lô: ${it.batch} (Tồn: ${availableStr}${pendingHint})`,
+          value: it.id,
+          record: it,
+        };
+      }),
     [inventoryList]
   );
 
@@ -71,18 +81,23 @@ export const SaleFormModal = ({
         customerAddress: editing.customer_address,
         brokerName: editing.broker_name || undefined,
         saleType: editing.sale_type,
-        paid: editing.paid,
+        paymentStatus: editing.payment_status,
         saleDate: editing.sale_date ? dayjs(editing.sale_date) : undefined,
       });
+      const isEditingPending = editing.payment_status === 'pending';
       const enriched = editing.items.map(it => {
         const inv = findInventoryFor(inventoryList, it);
         const upc = Number(inv?.units_per_carton) || 0;
         const carton = upc > 0 ? Math.floor(it.quantity / upc) : 0;
         const piece = upc > 0 ? it.quantity % upc : it.quantity;
+        // Khi edit đơn pending, cộng lại số lượng của chính line này vào available
+        // vì available_pieces đang trừ tất cả pending (kể cả của đơn này).
+        const baseAvail = Number(inv?.available_pieces ?? inv?.stock_pieces) || 0;
+        const ownQty = isEditingPending ? Number(it.quantity) || 0 : 0;
         return {
           ...it,
           inventory_id: inv?.id,
-          available: inv?.stock_pieces || 0,
+          available: baseAvail + ownQty,
           units_per_carton: upc,
           carton_quantity: carton,
           piece_quantity: piece,
@@ -94,7 +109,7 @@ export const SaleFormModal = ({
       form.setFieldsValue({
         saleDate: dayjs(),
         saleType: defaultSaleType || SaleType.RETAIL,
-        paid: false,
+        paymentStatus: PaymentStatus.UNPAID,
       });
       setLines([]);
     }
@@ -148,7 +163,7 @@ export const SaleFormModal = ({
       batch: r.batch,
       small_unit_id: r.small_unit?.id || 0,
       small_unit_label: r.small_unit?.label || '',
-      available: r.stock_pieces,
+      available: Number(r.available_pieces ?? r.stock_pieces) || 0,
       units_per_carton: Number(r.units_per_carton) || 0,
       carton_quantity: 0,
       piece_quantity: 0,
@@ -178,8 +193,8 @@ export const SaleFormModal = ({
         }
         if (l.quantity > l.available) {
           warning({
-            message: 'Vượt tồn kho',
-            description: `Tồn không đủ cho "${l.product_name}" (lô ${l.batch}): còn ${l.available} ${l.small_unit_label}, cần ${l.quantity}`,
+            message: 'Vượt tồn khả dụng',
+            description: `Tồn khả dụng không đủ cho "${l.product_name}" (lô ${l.batch}): còn ${l.available} ${l.small_unit_label} (đã trừ các đơn chờ xuất), cần ${l.quantity}`,
           });
           return;
         }
@@ -191,7 +206,7 @@ export const SaleFormModal = ({
         customerAddress: values.customerAddress || '',
         brokerName: values.saleType === SaleType.BROKER ? values.brokerName || '' : '',
         saleType: values.saleType,
-        paid: !!values.paid,
+        paymentStatus: values.paymentStatus || PaymentStatus.UNPAID,
         saleDate: toApiDate(values.saleDate),
         items: lines.map(l => ({
           product_id: l.product_id,
@@ -286,8 +301,8 @@ export const SaleFormModal = ({
             </Form.Item>
           </Col>
           <Col xs={24} sm={8}>
-            <Form.Item name="paid" label="Thanh toán" rules={[{ required: true }]}>
-              <AppSelect options={paidOptions} />
+            <Form.Item name="paymentStatus" label="Trạng thái" rules={[{ required: true }]}>
+              <AppSelect options={paymentStatusOptions} />
             </Form.Item>
           </Col>
         </Row>
@@ -327,9 +342,7 @@ export const SaleFormModal = ({
         )}
         {lines.map((line, idx) => {
           const usedProductNames = new Set(
-            lines
-              .filter((l, i) => i !== idx && l.product_name)
-              .map(l => l.product_name)
+            lines.filter((l, i) => i !== idx && l.product_name).map(l => l.product_name)
           );
           const optsForThisLine = inventoryOptions.filter(
             o => !usedProductNames.has(o.record.product_name)

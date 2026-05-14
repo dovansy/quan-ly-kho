@@ -1,4 +1,4 @@
-import { ProductCategory, SaleType, SmallUnit, Status, Unit } from './enums';
+import { PaymentStatus, ProductCategory, SaleType, SmallUnit, Status, Unit } from './enums';
 
 // --- Status ---
 export const statusOptions = [
@@ -29,6 +29,18 @@ export const paidOptions: { label: string; value: any }[] = [
   { label: 'Đã thanh toán', value: true },
   { label: 'Chưa thanh toán', value: false },
 ];
+
+export const paymentStatusOptions = [
+  { label: 'Đã thanh toán', value: PaymentStatus.PAID },
+  { label: 'Chưa thanh toán', value: PaymentStatus.UNPAID },
+  { label: 'Chờ xuất hàng', value: PaymentStatus.PENDING },
+];
+
+export const paymentStatusLabels: Record<string, { label: string; color: string }> = {
+  [PaymentStatus.PAID]: { label: 'Đã thanh toán', color: 'success' },
+  [PaymentStatus.UNPAID]: { label: 'Chưa thanh toán', color: 'error' },
+  [PaymentStatus.PENDING]: { label: 'Chờ xuất hàng', color: 'gold' },
+};
 
 // --- Unit (large unit: kiện / thùng / hộp) ---
 export const unitOptions = [

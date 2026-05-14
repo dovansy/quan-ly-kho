@@ -5,7 +5,7 @@ import { AppInput } from '@/components/atoms/AppInput';
 import { AppSelect } from '@/components/atoms/AppSelect';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { DATE_FORMAT } from '@/constants/format';
-import { paidOptions } from '@/constants/options';
+import { paymentStatusOptions } from '@/constants/options';
 
 interface Props {
   form: FormInstance;
@@ -19,8 +19,8 @@ export const SaleFilterForm = ({ form, loading, onSearch, onClear }: Props) => (
     <Form.Item name="keyword" label="Tìm khách hàng" className="flex-1 mb-0">
       <AppInput placeholder="Tên KH hoặc tên đơn hàng..." prefix={<FiSearch />} />
     </Form.Item>
-    <Form.Item name="paid" label="Thanh toán" className="w-[200px] mb-0">
-      <AppSelect allowClear placeholder="Chọn trạng thái" options={paidOptions} />
+    <Form.Item name="payment_status" label="Trạng thái" className="w-[200px] mb-0">
+      <AppSelect allowClear placeholder="Chọn trạng thái" options={paymentStatusOptions} />
     </Form.Item>
     <Form.Item name="saleDate" label="Ngày bán" className="w-[180px] mb-0">
       <AppDatePicker placeholder="Chọn ngày" format={DATE_FORMAT.DISPLAY} className="w-full" />

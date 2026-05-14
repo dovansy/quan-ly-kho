@@ -30,6 +30,7 @@ export interface SaleOrderRow {
   items: SaleLine[];
   total_amount: number;
   paid: boolean;
+  payment_status: 'paid' | 'unpaid' | 'pending';
   sale_date: string;
   returned: boolean;
   returned_at: string | null;
@@ -64,6 +65,7 @@ export const mapSale = (s: any): SaleOrderRow => ({
   })),
   total_amount: Number(s.total_amount),
   paid: Boolean(s.paid),
+  payment_status: s.payment_status || (s.paid ? 'paid' : 'unpaid'),
   sale_date: s.sale_date,
   returned: Boolean(s.returned),
   returned_at: s.returned_at || null,

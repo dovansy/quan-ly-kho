@@ -12,6 +12,8 @@ export interface InventoryItem {
   supplier: string;
   batch: string;
   stock_pieces: number;
+  available_pieces?: number;
+  pending_reserved?: number;
   units_per_carton: number | null;
   nearest_expiry: string | null;
   small_unit: { id: number; code: string; label: string } | null;
@@ -25,6 +27,7 @@ export interface InventoryFilters {
   supplier?: string;
   batch?: string;
   includeEmpty?: boolean;
+  exclude_pending_sale_order_id?: number;
   sort_by?: 'product_name' | 'warehouse_name' | 'nearest_expiry';
   sort_order?: 'asc' | 'desc';
 }

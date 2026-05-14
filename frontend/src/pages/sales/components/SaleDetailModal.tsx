@@ -5,7 +5,7 @@ import { AppButton } from '@/components/atoms/AppButton';
 import { AppModal } from '@/components/atoms/AppModal';
 import { AppTable } from '@/components/atoms/AppTable/AppTable';
 import { SaleType } from '@/constants/enums';
-import { saleTypeLabels } from '@/constants/options';
+import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { findInventoryFor, SaleOrderRow } from '../types';
@@ -82,11 +82,13 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
                 <Tag color="warning">
                   Đã hoàn hàng{viewing.returned_at ? ` (${formatDate(viewing.returned_at)})` : ''}
                 </Tag>
-              ) : viewing.paid ? (
-                <Tag color="success">Đã trả</Tag>
-              ) : (
-                <Tag color="error">Còn nợ</Tag>
-              )}
+              ) : (() => {
+                const info = paymentStatusLabels[viewing.payment_status] || {
+                  label: viewing.paid ? 'Đã thanh toán' : 'Chưa thanh toán',
+                  color: viewing.paid ? 'success' : 'error',
+                };
+                return <Tag color={info.color}>{info.label}</Tag>;
+              })()}
             </Descriptions.Item>
             {viewing.sale_type === SaleType.BROKER && (
               <Descriptions.Item label="Nhà môi giới" span={3}>

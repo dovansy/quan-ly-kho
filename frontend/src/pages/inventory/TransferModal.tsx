@@ -19,6 +19,8 @@ interface InventoryRow {
   supplier: string;
   batch: string;
   stock_pieces: number;
+  available_pieces?: number;
+  pending_reserved?: number;
   units_per_carton: number | null;
   nearest_expiry: string | null;
   small_unit?: { id: number; code: string; label: string } | null;
@@ -43,12 +45,22 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
   const inventoryOptions = useMemo(
     () =>
       inventoryList
-        .filter(it => Number(it.stock_pieces) > 0)
-        .map(it => ({
-          label: `${it.product_name} — ${it.warehouse_name} | NCC: ${it.supplier} | Lô: ${it.batch} (Tồn: ${it.stock_pieces} ${it.small_unit?.label || ''})`,
-          value: it.id,
-          record: it,
-        })),
+        .map(it => {
+          const avail = Number(it.available_pieces ?? it.stock_pieces) || 0;
+          const pending = Number(it.pending_reserved) || 0;
+          const upc = Number(it.units_per_carton) || 0;
+          const unit = it.small_unit?.label || '';
+          const availStr = formatCartonPiecesPlain(avail, upc, unit);
+          const hint =
+            pending > 0 ? ` — chờ xuất: ${formatCartonPiecesPlain(pending, upc, unit)}` : '';
+          return {
+            label: `${it.product_name} — ${it.warehouse_name} | ${it.supplier} | Lô: ${it.batch} (Tồn: ${availStr}${hint})`,
+            value: it.id,
+            record: it,
+            available: avail,
+          };
+        })
+        .filter(o => o.available > 0),
     [inventoryList]
   );
 
@@ -60,7 +72,7 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
   const upc = Number(selected?.units_per_carton) || 0;
   const unitLabel = selected?.small_unit?.label || '';
   const totalPieces = upc > 0 ? cartonQty * upc + pieceQty : pieceQty;
-  const available = Number(selected?.stock_pieces) || 0;
+  const available = Number(selected?.available_pieces ?? selected?.stock_pieces) || 0;
 
   const destWarehouseOptions = useMemo(() => {
     if (!selected) return warehouseOptions;
@@ -196,7 +208,7 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
           </Row>
         )}
 
-        <div className="pb-2 mt-2 mb-2 text-base font-semibold border-t pt-3">Chuyển kho</div>
+        <div className="pt-3 pb-2 mt-2 mb-2 text-base font-semibold border-t">Chuyển kho</div>
 
         <Row gutter={[8, 0]} align="bottom">
           <Col xs={24} sm={11}>
@@ -258,7 +270,8 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
             </span>
             {totalPieces > 0 && (
               <>
-                {' '}— Tổng cần chuyển:{' '}
+                {' '}
+                — Tổng cần chuyển:{' '}
                 <span className="font-semibold">
                   {formatCartonPiecesPlain(totalPieces, upc, unitLabel)}
                 </span>

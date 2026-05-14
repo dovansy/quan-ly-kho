@@ -1,6 +1,6 @@
-import { Col, Form, Row } from 'antd';
+import { Col, Form, Row, Segmented } from 'antd';
 import dayjs from 'dayjs';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppAutoComplete } from '@/components/atoms/AppAutoComplete';
 import { AppDatePicker } from '@/components/atoms/AppDatepicker';
 import { AppInput } from '@/components/atoms/AppInput';
@@ -12,6 +12,7 @@ import { DATE_FORMAT } from '@/constants/format';
 import { useCreateImport, useUpdateImport } from '@/hooks/api/imports';
 import { formatNumber } from '@/utils/format';
 import { ImportRecord } from '../types';
+import './ImportFormModal.scss';
 
 interface Props {
   open: boolean;
@@ -41,16 +42,36 @@ export const ImportFormModal = ({
   const update = useUpdateImport();
   const { success, error, warning } = useAppNotification();
 
+  const [inputMode, setInputMode] = useState<'kien' | 'vien'>('kien');
+
+  const QUANTITY_FIELDS = [
+    'carton_quantity',
+    'units_per_carton',
+    'piece_quantity',
+    'total_pieces_input',
+    'units_per_box',
+  ] as const;
+
   const cartonQty = Number(Form.useWatch('carton_quantity', form)) || 0;
   const unitsPer = Number(Form.useWatch('units_per_carton', form)) || 0;
   const pieceQty = Number(Form.useWatch('piece_quantity', form)) || 0;
+  const totalPiecesInput = Number(Form.useWatch('total_pieces_input', form)) || 0;
+  const unitsPerBox = Number(Form.useWatch('units_per_box', form)) || 0;
   const smallUnitId = Form.useWatch('small_unit_id', form);
   const productNameWatch = Form.useWatch('product_name', form);
   const warehouseIdWatch = Form.useWatch('warehouse_id', form);
+  const supplierWatch = Form.useWatch('supplier', form);
+  const batchWatch = Form.useWatch('batch', form);
 
   useEffect(() => {
     if (!open) return;
     if (editing) {
+      const mode: 'kien' | 'vien' = editing.input_total_pieces != null ? 'vien' : 'kien';
+      setInputMode(mode);
+      const totalPiecesEdit =
+        editing.input_total_pieces ??
+        (editing.carton_quantity || 0) * (editing.units_per_carton || 1) +
+          (editing.piece_quantity || 0);
       form.setFieldsValue({
         product_name: editing.product_name,
         category: editing.category,
@@ -61,10 +82,13 @@ export const ImportFormModal = ({
         carton_quantity: editing.carton_quantity,
         units_per_carton: editing.units_per_carton,
         piece_quantity: editing.piece_quantity,
+        total_pieces_input: mode === 'vien' ? totalPiecesEdit : undefined,
+        units_per_box: editing.units_per_box ?? undefined,
         expiry_date: editing.expiry_date ? dayjs(editing.expiry_date) : undefined,
         import_date: editing.import_date ? dayjs(editing.import_date) : undefined,
       });
     } else {
+      setInputMode('kien');
       form.resetFields();
       const defaultUnit = smallUnitOpts.find((u: any) => u.code === 'hop');
       form.setFieldsValue({
@@ -95,6 +119,43 @@ export const ImportFormModal = ({
     return batches.map(b => ({ label: b, value: b }));
   }, [isExistingProduct, warehouseIdWatch, productImports]);
 
+  const matchedImport = useMemo(() => {
+    if (editing || !matchedProduct || !warehouseIdWatch || !supplierWatch || !batchWatch) {
+      return null;
+    }
+    return (
+      productImports.find(
+        i =>
+          i.warehouse_id === Number(warehouseIdWatch) &&
+          i.supplier === supplierWatch &&
+          i.batch === batchWatch
+      ) || null
+    );
+  }, [editing, matchedProduct, productImports, warehouseIdWatch, supplierWatch, batchWatch]);
+
+  const prevMatchedIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (editing) return;
+    const prevId = prevMatchedIdRef.current;
+    if (matchedImport) {
+      const matchedMode: 'kien' | 'vien' =
+        matchedImport.input_total_pieces != null ? 'vien' : 'kien';
+      setInputMode(matchedMode);
+      form.setFieldsValue({
+        units_per_carton: matchedImport.units_per_carton,
+        units_per_box: matchedImport.units_per_box ?? undefined,
+        small_unit_id: matchedImport.small_unit_id ?? form.getFieldValue('small_unit_id'),
+      });
+      prevMatchedIdRef.current = matchedImport.id;
+    } else if (prevId != null) {
+      form.resetFields(['units_per_carton', 'units_per_box']);
+      prevMatchedIdRef.current = null;
+    }
+  }, [matchedImport, editing, form]);
+
+  const lockUpc = !!matchedImport;
+  const lockVienBox = !!matchedImport && matchedImport.units_per_box != null;
+
   const supplierOpts = useMemo(() => {
     const set = new Set<string>();
     productList.forEach((p: any) => p.supplier && set.add(p.supplier));
@@ -124,6 +185,7 @@ export const ImportFormModal = ({
       warehouse_id: nextWid,
       batch: undefined,
     });
+    form.resetFields(['units_per_carton', 'units_per_box']);
   };
 
   const onProductNameChange = (value: string) => {
@@ -137,10 +199,12 @@ export const ImportFormModal = ({
   const onWarehouseChange = () => {
     if (editing) return;
     form.setFieldsValue({ batch: undefined });
+    form.resetFields(['units_per_carton', 'units_per_box']);
   };
 
   const smallUnitLabel = smallUnitOpts.find((s: any) => s.value === smallUnitId)?.label || '';
-  const totalPieces = cartonQty * unitsPer + pieceQty;
+  const boxLabel = (smallUnitLabel || 'hộp').toLowerCase();
+  const totalPieces = inputMode === 'kien' ? cartonQty * unitsPer + pieceQty : totalPiecesInput;
 
   const close = () => {
     form.resetFields();
@@ -149,6 +213,32 @@ export const ImportFormModal = ({
 
   const onSubmit = () => {
     form.validateFields().then(values => {
+      let carton_quantity = Number(values.carton_quantity || 0);
+      let units_per_carton = Number(values.units_per_carton || 1);
+      let piece_quantity = Number(values.piece_quantity || 0);
+
+      if (inputMode === 'vien') {
+        const totalVien = Number(values.total_pieces_input || 0);
+        const vienPerHop = Number(values.units_per_box || 0);
+        const hopPerKien = Number(values.units_per_carton || 0);
+        const totalHop = vienPerHop > 0 ? Math.floor(totalVien / vienPerHop) : 0;
+        if (hopPerKien > 0 && totalHop > 0 && hopPerKien > totalHop) {
+          warning({
+            message: 'Số hộp / kiện vượt quá số lượng thực tế',
+            description: `Tổng chỉ có ${totalHop} ${boxLabel} (= ${totalVien} viên / ${vienPerHop} viên/${boxLabel}), không thể đặt ${hopPerKien} ${boxLabel}/kiện.`,
+          });
+          return;
+        }
+        units_per_carton = hopPerKien > 0 ? hopPerKien : 1;
+        if (units_per_carton > 1) {
+          carton_quantity = Math.floor(totalHop / units_per_carton);
+          piece_quantity = totalHop - carton_quantity * units_per_carton;
+        } else {
+          carton_quantity = 0;
+          piece_quantity = totalHop;
+        }
+      }
+
       const payload = {
         product_name: values.product_name,
         category: values.category,
@@ -156,11 +246,17 @@ export const ImportFormModal = ({
         supplier: values.supplier,
         batch: values.batch,
         small_unit_id: Number(values.small_unit_id),
-        carton_quantity: Number(values.carton_quantity || 0),
-        units_per_carton: Number(values.units_per_carton || 1),
-        piece_quantity: Number(values.piece_quantity || 0),
+        carton_quantity,
+        units_per_carton,
+        piece_quantity,
         expiry_date: dayjs(values.expiry_date).format('YYYY-MM-DD'),
         import_date: dayjs(values.import_date).format('YYYY-MM-DD'),
+        input_mode: inputMode,
+        input_total_pieces:
+          inputMode === 'vien' ? Number(values.total_pieces_input || 0) || null : null,
+        units_per_box: inputMode === 'vien' ? Number(values.units_per_box || 0) || null : null,
+        boxes_per_carton:
+          inputMode === 'vien' ? Number(values.units_per_carton || 0) || null : null,
       };
 
       const total = payload.carton_quantity * payload.units_per_carton + payload.piece_quantity;
@@ -282,11 +378,7 @@ export const ImportFormModal = ({
         </Row>
         <Row gutter={[16, 0]}>
           <Col xs={24} sm={12}>
-            <Form.Item
-              name="expiry_date"
-              label="HSD"
-              rules={[{ required: true, message: 'Chọn HSD' }]}
-            >
+            <Form.Item name="expiry_date" label="HSD">
               <AppDatePicker
                 placeholder="Chọn HSD"
                 format={DATE_FORMAT.DISPLAY}
@@ -310,40 +402,124 @@ export const ImportFormModal = ({
           </Col>
         </Row>
 
-        <div className="pb-2 mt-2 mb-2 text-base font-semibold">
-          {totalPieces > 0
-            ? (() => {
-                const parts: string[] = [];
-                if (cartonQty > 0) parts.push(`${formatNumber(cartonQty)} kiện`);
-                if (pieceQty > 0)
-                  parts.push(`${formatNumber(pieceQty)} ${(smallUnitLabel || 'lẻ').toLowerCase()}`);
-                return `Số lượng nhập (${parts.join(', ')} = tổng ${formatNumber(totalPieces)} ${smallUnitLabel})`;
-              })()
-            : 'Số lượng nhập'}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-2 mt-2 mb-2">
+          <div className="text-base font-semibold">
+            {totalPieces > 0
+              ? (() => {
+                  if (inputMode === 'kien') {
+                    const parts: string[] = [];
+                    if (cartonQty > 0) parts.push(`${formatNumber(cartonQty)} kiện`);
+                    if (pieceQty > 0)
+                      parts.push(
+                        `${formatNumber(pieceQty)} ${(smallUnitLabel || 'lẻ').toLowerCase()}`
+                      );
+                    return `Số lượng nhập (${parts.join(', ')} = tổng ${formatNumber(totalPieces)} ${smallUnitLabel})`;
+                  }
+                  const looseVien = unitsPerBox > 0 ? totalPieces % unitsPerBox : 0;
+                  const parts: string[] = [`${formatNumber(totalPieces)} viên`];
+                  if (unitsPerBox > 0) {
+                    const totalHop = Math.floor(totalPieces / unitsPerBox);
+                    parts.push(`${formatNumber(totalHop)} ${boxLabel}`);
+                    if (unitsPer > 0 && totalHop > 0) {
+                      const totalKien = Math.floor(totalHop / unitsPer);
+                      const looseHop = totalHop - totalKien * unitsPer;
+                      if (totalKien > 0) {
+                        const kienHopParts: string[] = [`${formatNumber(totalKien)} kiện`];
+                        if (looseHop > 0)
+                          kienHopParts.push(`${formatNumber(looseHop)} ${boxLabel}`);
+                        parts.push(kienHopParts.join(' + '));
+                      }
+                    }
+                  }
+                  const main = `Số lượng nhập (${parts.join(' = ')})`;
+                  return looseVien > 0 ? `${main} lẻ ${formatNumber(looseVien)} viên` : main;
+                })()
+              : 'Số lượng nhập'}
+          </div>
+          <Segmented
+            className="import-mode-segmented"
+            value={inputMode}
+            disabled={!!matchedImport}
+            onChange={val => {
+              setInputMode(val as 'kien' | 'vien');
+              form.resetFields([...QUANTITY_FIELDS]);
+            }}
+            options={[
+              { label: 'Nhập kiện', value: 'kien' },
+              { label: 'Nhập viên', value: 'vien' },
+            ]}
+          />
         </div>
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={8}>
-            <Form.Item name="carton_quantity" label="Số kiện">
-              <AppInputNumber placeholder="0" decimalScale={0} className="w-full" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item
-              name="units_per_carton"
-              label={`Số ${smallUnitLabel || 'Lẻ'} / kiện`}
-              rules={[
-                { required: true, message: 'Nhập số ' + (smallUnitLabel || 'Lẻ') + ' / kiện' },
-              ]}
-            >
-              <AppInputNumber placeholder="1" decimalScale={0} className="w-full" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item name="piece_quantity" label={`Số ${smallUnitLabel || 'lẻ'} (ngoài kiện)`}>
-              <AppInputNumber placeholder="0" decimalScale={0} className="w-full" />
-            </Form.Item>
-          </Col>
-        </Row>
+        {inputMode === 'kien' ? (
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={8}>
+              <Form.Item name="carton_quantity" label="Số kiện">
+                <AppInputNumber placeholder="0" decimalScale={0} className="w-full" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="units_per_carton"
+                label={`Số ${smallUnitLabel || 'Lẻ'} / kiện`}
+                rules={[
+                  { required: true, message: 'Nhập số ' + (smallUnitLabel || 'Lẻ') + ' / kiện' },
+                ]}
+              >
+                <AppInputNumber
+                  placeholder="1"
+                  decimalScale={0}
+                  className="w-full"
+                  disabled={lockUpc || !!editing}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="piece_quantity" label={`Số ${smallUnitLabel || 'lẻ'} (ngoài kiện)`}>
+                <AppInputNumber placeholder="0" decimalScale={0} className="w-full" />
+              </Form.Item>
+            </Col>
+          </Row>
+        ) : (
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="total_pieces_input"
+                label="Tổng số viên"
+                rules={[{ required: true, message: 'Nhập tổng số viên' }]}
+              >
+                <AppInputNumber placeholder="0" decimalScale={0} className="w-full" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="units_per_box"
+                label={`Số viên / ${boxLabel}`}
+                rules={[{ required: true, message: `Nhập số viên / ${boxLabel}` }]}
+              >
+                <AppInputNumber
+                  placeholder="0"
+                  decimalScale={0}
+                  className="w-full"
+                  disabled={lockVienBox || !!editing}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="units_per_carton"
+                label={`Số ${boxLabel} / kiện`}
+                rules={[{ required: true, message: `Nhập số ${boxLabel} / kiện` }]}
+              >
+                <AppInputNumber
+                  placeholder="0"
+                  decimalScale={0}
+                  className="w-full"
+                  disabled={lockUpc || !!editing}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        )}
       </Form>
     </CrudModal>
   );

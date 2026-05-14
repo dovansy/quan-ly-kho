@@ -1,6 +1,8 @@
-import { Tag } from 'antd';
+import { Dropdown, Tag, Tooltip } from 'antd';
+import { FiTruck } from 'react-icons/fi';
+import { AppButton } from '@/components/atoms/AppButton';
 import { ActionColumn } from '@/components/molecules/action-column';
-import { saleTypeLabels } from '@/constants/options';
+import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
 import { SaleOrderRow } from '../types';
@@ -13,6 +15,7 @@ interface Params {
   onEdit: (r: SaleOrderRow) => void;
   onDelete: (r: SaleOrderRow) => void;
   onReturn: (r: SaleOrderRow) => void;
+  onConfirmShipment?: (r: SaleOrderRow, paymentStatus: 'paid' | 'unpaid') => void;
   sortBy?: SortableField;
   sortOrder?: 'asc' | 'desc';
 }
@@ -31,6 +34,7 @@ export const useSaleListColumns = ({
   onEdit,
   onDelete,
   onReturn,
+  onConfirmShipment,
   sortBy,
   sortOrder,
 }: Params) => [
@@ -85,7 +89,8 @@ export const useSaleListColumns = ({
     sortOrder: getSortOrder('status', sortBy, sortOrder),
     render: (_: any, r: SaleOrderRow) => {
       if (r.returned) return <Tag color="warning">Đã hoàn hàng</Tag>;
-      return r.paid ? <Tag color="success">Đã trả</Tag> : <Tag color="error">Còn nợ</Tag>;
+      const info = paymentStatusLabels[r.payment_status] || { label: r.paid ? 'Đã thanh toán' : 'Chưa thanh toán', color: r.paid ? 'success' : 'error' };
+      return <Tag color={info.color}>{info.label}</Tag>;
     },
   },
   {
@@ -101,18 +106,43 @@ export const useSaleListColumns = ({
     title: 'Hành động',
     key: 'actions',
     align: 'center' as const,
-    width: 150,
+    width: 180,
     render: (_: any, r: SaleOrderRow) => (
-      <ActionColumn
-        onView={() => onView(r)}
-        onEdit={() => onEdit(r)}
-        editDisabled={r.returned}
-        onReturn={r.returned ? undefined : () => onReturn(r)}
-        onDelete={() => onDelete(r)}
-        deleteTitle="Xóa hóa đơn"
-        deleteDescription={`Xóa hóa đơn của khách "${r.customer_name || '—'}"?`}
-        returnDescription={`Hoàn lại hàng của hóa đơn "${r.customer_name || '—'}" về kho?`}
-      />
+      <div className="flex items-center justify-center gap-1">
+        {r.payment_status === 'pending' && !r.returned && onConfirmShipment && (
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                {
+                  key: 'paid',
+                  label: 'Xác nhận xuất + Đã thanh toán',
+                  onClick: () => onConfirmShipment(r, 'paid'),
+                },
+                {
+                  key: 'unpaid',
+                  label: 'Xác nhận xuất + Chưa thanh toán',
+                  onClick: () => onConfirmShipment(r, 'unpaid'),
+                },
+              ],
+            }}
+          >
+            <Tooltip title="Xác nhận xuất hàng">
+              <AppButton type="text" size="small" icon={<FiTruck />} />
+            </Tooltip>
+          </Dropdown>
+        )}
+        <ActionColumn
+          onView={() => onView(r)}
+          onEdit={() => onEdit(r)}
+          editDisabled={r.returned}
+          onReturn={r.returned || r.payment_status === 'pending' ? undefined : () => onReturn(r)}
+          onDelete={() => onDelete(r)}
+          deleteTitle="Xóa hóa đơn"
+          deleteDescription={`Xóa hóa đơn của khách "${r.customer_name || '—'}"?`}
+          returnDescription={`Hoàn lại hàng của hóa đơn "${r.customer_name || '—'}" về kho?`}
+        />
+      </div>
     ),
   },
 ];

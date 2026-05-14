@@ -5,7 +5,7 @@ import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
 import { useGetInventory } from '@/hooks/api/inventory';
-import { useDeleteSale, useGetSales, useReturnSale } from '@/hooks/api/sales';
+import { useConfirmShipment, useDeleteSale, useGetSales, useReturnSale } from '@/hooks/api/sales';
 import { salesService } from '@/services/sales.service';
 import { toApiDate } from '@/utils/format';
 import { SaleDetailModal } from './components/SaleDetailModal';
@@ -35,6 +35,7 @@ const SalesPage = () => {
   const { data: inventoryRes } = useGetInventory();
   const remove = useDeleteSale();
   const returnSale = useReturnSale();
+  const confirmShipment = useConfirmShipment();
   const { success, error } = useAppNotification();
 
   const inventoryList = inventoryRes?.data || [];
@@ -47,14 +48,14 @@ const SalesPage = () => {
     [activeOrders]
   );
   const totalDebt = useMemo(
-    () => activeOrders.filter(x => !x.paid).reduce((s, x) => s + x.total_amount, 0),
+    () => activeOrders.filter(x => x.payment_status === 'unpaid').reduce((s, x) => s + x.total_amount, 0),
     [activeOrders]
   );
 
   const onSearch = (v: any) =>
     setFilters({
       keyword: v.keyword,
-      paid: v.paid !== undefined && v.paid !== null ? String(v.paid) : undefined,
+      payment_status: v.payment_status || undefined,
       saleDate: v.saleDate ? toApiDate(v.saleDate) : undefined,
     });
 
@@ -124,11 +125,26 @@ const SalesPage = () => {
     });
   };
 
+  const onConfirmShipment = (r: SaleOrderRow, paymentStatus: 'paid' | 'unpaid') => {
+    confirmShipment.mutate(
+      { id: r.id, paymentStatus },
+      {
+        onSuccess: () => success({ message: 'Xác nhận xuất hàng thành công' }),
+        onError: (e: any) =>
+          error({
+            message: 'Xác nhận thất bại',
+            description: e?.response?.data?.message || e?.data?.message,
+          }),
+      }
+    );
+  };
+
   const columns = useSaleListColumns({
     onView: openView,
     onEdit: openEdit,
     onDelete,
     onReturn,
+    onConfirmShipment,
     sortBy,
     sortOrder,
   });
@@ -137,7 +153,7 @@ const SalesPage = () => {
     try {
       const res = await salesService.getAll({
         keyword: filters.keyword,
-        paid: filters.paid,
+        payment_status: filters.payment_status,
         saleDate: filters.saleDate,
         limit: 100000,
       });
@@ -154,8 +170,13 @@ const SalesPage = () => {
   const filterSummary = (() => {
     const parts: { label: string; value: string }[] = [];
     if (filters.keyword) parts.push({ label: 'Khách hàng', value: `"${filters.keyword}"` });
-    if (filters.paid !== undefined && filters.paid !== '') {
-      parts.push({ label: 'Thanh toán', value: filters.paid === 'true' ? 'Đã trả' : 'Còn nợ' });
+    if (filters.payment_status) {
+      const map: Record<string, string> = {
+        paid: 'Đã thanh toán',
+        unpaid: 'Chưa thanh toán',
+        pending: 'Chờ xuất hàng',
+      };
+      parts.push({ label: 'Trạng thái', value: map[filters.payment_status] || filters.payment_status });
     }
     if (filters.saleDate) parts.push({ label: 'Ngày bán', value: filters.saleDate });
     return parts;

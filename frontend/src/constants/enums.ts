@@ -9,6 +9,12 @@ export enum SaleType {
   BROKER = 'broker',
 }
 
+export enum PaymentStatus {
+  PAID = 'paid',
+  UNPAID = 'unpaid',
+  PENDING = 'pending',
+}
+
 export enum Unit {
   KIEN = 'kien',
   THUNG = 'thung',

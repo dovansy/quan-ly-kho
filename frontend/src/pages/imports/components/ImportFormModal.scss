@@ -1,0 +1,18 @@
+.import-mode-segmented {
+  .ant-segmented-item-selected {
+    background-color: var(--primary) !important;
+
+    .ant-segmented-item-label {
+      color: #fff !important;
+    }
+  }
+
+  .ant-segmented-thumb {
+    background-color: var(--primary) !important;
+  }
+
+  .ant-segmented-thumb + .ant-segmented-item-label,
+  .ant-segmented-item-selected .ant-segmented-item-label {
+    color: #fff !important;
+  }
+}

@@ -28,6 +28,7 @@ export interface Sale {
   items: SaleItem[];
   total_amount: number;
   paid: boolean;
+  payment_status: 'paid' | 'unpaid' | 'pending';
   sale_date: string;
   returned: boolean;
   returned_at: string | null;
@@ -42,13 +43,15 @@ export interface CreateSaleRequest {
   brokerName?: string;
   saleType: string;
   items: Omit<SaleItem, 'id' | 'warehouse_name' | 'small_unit'>[];
-  paid: boolean;
+  paid?: boolean;
+  paymentStatus?: 'paid' | 'unpaid' | 'pending';
   saleDate: string;
 }
 
 export interface SaleFilters {
   keyword?: string;
   paid?: string;
+  payment_status?: 'paid' | 'unpaid' | 'pending';
   saleDate?: string;
   sale_type?: string;
   page?: number;
@@ -72,4 +75,7 @@ export const salesService = {
 
   return: (id: number) =>
     httpClient.post<APIResponse<Sale>>(`/sales/${id}/return`),
+
+  confirmShipment: (id: number, paymentStatus: 'paid' | 'unpaid') =>
+    httpClient.post<APIResponse<Sale>>(`/sales/${id}/confirm-shipment`, { paymentStatus }),
 };

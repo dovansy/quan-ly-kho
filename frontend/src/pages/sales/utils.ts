@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import { saleTypeLabels } from '@/constants/options';
+import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
 import { exportToExcel } from '@/utils/exportExcel';
 import { formatCartonPiecesPlain, formatCurrency, formatDate } from '@/utils/format';
 import { findInventoryFor, SaleLine, SaleOrderRow } from './types';
@@ -21,7 +21,7 @@ export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) =
       customer_phone: s.customer_phone,
       customer_address: s.customer_address,
       sale_type: saleTypeLabel,
-      paid: s.paid ? 'Đã trả' : 'Còn nợ',
+      paid: paymentStatusLabels[s.payment_status]?.label || (s.paid ? 'Đã thanh toán' : 'Chưa thanh toán'),
       sale_date: s.sale_date,
       total_amount: s.total_amount,
       product_name: l?.product_name || '',
