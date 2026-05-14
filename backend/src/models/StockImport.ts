@@ -11,15 +11,26 @@ interface StockImportAttributes {
   carton_quantity: number;
   units_per_carton: number;
   piece_quantity: number;
-  expiry_date: Date;
+  expiry_date: Date | null;
   imported_by_user_id: number | null;
   import_date: Date;
   note: string | null;
+  input_total_pieces: number | null;
+  units_per_box: number | null;
+  boxes_per_carton: number | null;
 }
 
 type StockImportCreation = Optional<
   StockImportAttributes,
-  'id' | 'carton_quantity' | 'units_per_carton' | 'piece_quantity' | 'imported_by_user_id' | 'note'
+  | 'id'
+  | 'carton_quantity'
+  | 'units_per_carton'
+  | 'piece_quantity'
+  | 'imported_by_user_id'
+  | 'note'
+  | 'input_total_pieces'
+  | 'units_per_box'
+  | 'boxes_per_carton'
 >;
 
 export class StockImport extends Model<StockImportAttributes, StockImportCreation> {
@@ -32,10 +43,13 @@ export class StockImport extends Model<StockImportAttributes, StockImportCreatio
   declare carton_quantity: number;
   declare units_per_carton: number;
   declare piece_quantity: number;
-  declare expiry_date: Date;
+  declare expiry_date: Date | null;
   declare imported_by_user_id: number | null;
   declare import_date: Date;
   declare note: string | null;
+  declare input_total_pieces: number | null;
+  declare units_per_box: number | null;
+  declare boxes_per_carton: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -51,10 +65,13 @@ StockImport.init(
     carton_quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
     units_per_carton: { type: DataTypes.INTEGER, defaultValue: 1 },
     piece_quantity: { type: DataTypes.INTEGER, defaultValue: 0 },
-    expiry_date: { type: DataTypes.DATEONLY, allowNull: false },
+    expiry_date: { type: DataTypes.DATEONLY, allowNull: true },
     imported_by_user_id: { type: DataTypes.INTEGER, allowNull: true, references: { model: 'users', key: 'id' } },
     import_date: { type: DataTypes.DATEONLY, allowNull: false },
     note: { type: DataTypes.STRING(500) },
+    input_total_pieces: { type: DataTypes.INTEGER, allowNull: true },
+    units_per_box: { type: DataTypes.INTEGER, allowNull: true },
+    boxes_per_carton: { type: DataTypes.INTEGER, allowNull: true },
   },
   { sequelize, tableName: 'stock_imports' },
 );

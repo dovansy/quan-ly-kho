@@ -59,6 +59,7 @@ export class StockImportController {
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity = 0, units_per_carton = 1, piece_quantity = 0,
       expiry_date, import_date, note,
+      input_mode, input_total_pieces, units_per_box, boxes_per_carton,
     } = req.body;
 
     if (!product_name) { sendError(res, ErrorCode.REQUIRED, 'product_name là bắt buộc', 400); return; }
@@ -66,7 +67,6 @@ export class StockImportController {
     if (!supplier) { sendError(res, ErrorCode.REQUIRED, 'supplier là bắt buộc', 400); return; }
     if (!batch) { sendError(res, ErrorCode.REQUIRED, 'batch là bắt buộc', 400); return; }
     if (!small_unit_id) { sendError(res, ErrorCode.REQUIRED, 'small_unit_id là bắt buộc', 400); return; }
-    if (!expiry_date) { sendError(res, ErrorCode.REQUIRED, 'expiry_date là bắt buộc', 400); return; }
     if (carton_quantity <= 0 && piece_quantity <= 0) {
       sendError(res, ErrorCode.EMPTY, 'Số lượng nhập phải > 0', 400); return;
     }
@@ -95,10 +95,18 @@ export class StockImportController {
         warehouse_id, supplier, batch,
         small_unit_id,
         carton_quantity, units_per_carton, piece_quantity,
-        expiry_date,
+        expiry_date: expiry_date || null,
         imported_by_user_id: userId,
         import_date: import_date || new Date(),
         note: note || null,
+        input_total_pieces:
+          input_mode === 'vien'
+            ? Number(input_total_pieces || 0) || null
+            : input_total_pieces != null
+              ? Number(input_total_pieces) || null
+              : null,
+        units_per_box: units_per_box != null ? Number(units_per_box) || null : null,
+        boxes_per_carton: boxes_per_carton != null ? Number(boxes_per_carton) || null : null,
       }, { transaction: t });
 
       return row;
@@ -118,6 +126,7 @@ export class StockImportController {
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity, units_per_carton, piece_quantity,
       expiry_date, import_date, note,
+      input_mode, input_total_pieces, units_per_box, boxes_per_carton,
     } = req.body;
 
     try {
@@ -143,6 +152,22 @@ export class StockImportController {
           expiry_date: expiry_date ?? row.expiry_date,
           import_date: import_date ?? row.import_date,
           note: note ?? row.note,
+          input_total_pieces:
+            input_mode === 'vien'
+              ? Number(input_total_pieces || 0) || null
+              : input_mode === 'kien'
+                ? null
+                : input_total_pieces !== undefined
+                  ? input_total_pieces != null ? Number(input_total_pieces) || null : null
+                  : row.input_total_pieces,
+          units_per_box:
+            units_per_box !== undefined
+              ? units_per_box != null ? Number(units_per_box) || null : null
+              : row.units_per_box,
+          boxes_per_carton:
+            boxes_per_carton !== undefined
+              ? boxes_per_carton != null ? Number(boxes_per_carton) || null : null
+              : row.boxes_per_carton,
         }, { transaction: t });
       });
     } catch (err: any) {
@@ -205,6 +230,9 @@ function format(row: any) {
     imported_by: json.importer ? (json.importer.full_name || json.importer.username) : null,
     import_date: json.import_date,
     note: json.note,
+    input_total_pieces: json.input_total_pieces ?? null,
+    units_per_box: json.units_per_box ?? null,
+    boxes_per_carton: json.boxes_per_carton ?? null,
     created_at: json.created_at,
     updated_at: json.updated_at,
   };
