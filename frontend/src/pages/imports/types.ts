@@ -18,5 +18,4 @@ export interface ImportRecord {
   import_date: string;
   input_total_pieces?: number | null;
   units_per_box?: number | null;
-  boxes_per_carton?: number | null;
 }

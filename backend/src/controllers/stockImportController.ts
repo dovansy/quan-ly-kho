@@ -59,7 +59,7 @@ export class StockImportController {
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity = 0, units_per_carton = 1, piece_quantity = 0,
       expiry_date, import_date, note,
-      input_mode, input_total_pieces, units_per_box, boxes_per_carton,
+      input_mode, input_total_pieces, units_per_box,
     } = req.body;
 
     if (!product_name) { sendError(res, ErrorCode.REQUIRED, 'product_name là bắt buộc', 400); return; }
@@ -106,7 +106,6 @@ export class StockImportController {
               ? Number(input_total_pieces) || null
               : null,
         units_per_box: units_per_box != null ? Number(units_per_box) || null : null,
-        boxes_per_carton: boxes_per_carton != null ? Number(boxes_per_carton) || null : null,
       }, { transaction: t });
 
       return row;
@@ -126,7 +125,7 @@ export class StockImportController {
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity, units_per_carton, piece_quantity,
       expiry_date, import_date, note,
-      input_mode, input_total_pieces, units_per_box, boxes_per_carton,
+      input_mode, input_total_pieces, units_per_box,
     } = req.body;
 
     try {
@@ -164,10 +163,6 @@ export class StockImportController {
             units_per_box !== undefined
               ? units_per_box != null ? Number(units_per_box) || null : null
               : row.units_per_box,
-          boxes_per_carton:
-            boxes_per_carton !== undefined
-              ? boxes_per_carton != null ? Number(boxes_per_carton) || null : null
-              : row.boxes_per_carton,
         }, { transaction: t });
       });
     } catch (err: any) {
@@ -232,7 +227,6 @@ function format(row: any) {
     note: json.note,
     input_total_pieces: json.input_total_pieces ?? null,
     units_per_box: json.units_per_box ?? null,
-    boxes_per_carton: json.boxes_per_carton ?? null,
     created_at: json.created_at,
     updated_at: json.updated_at,
   };

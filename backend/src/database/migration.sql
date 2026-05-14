@@ -131,7 +131,6 @@ CREATE TABLE stock_imports (
   note VARCHAR(500) DEFAULT NULL,
   input_total_pieces INT DEFAULT NULL COMMENT 'Có giá trị = bản ghi nhập theo mode viên',
   units_per_box INT DEFAULT NULL,
-  boxes_per_carton INT DEFAULT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   PRIMARY KEY (id),

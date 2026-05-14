@@ -17,7 +17,6 @@ interface StockImportAttributes {
   note: string | null;
   input_total_pieces: number | null;
   units_per_box: number | null;
-  boxes_per_carton: number | null;
 }
 
 type StockImportCreation = Optional<
@@ -30,7 +29,6 @@ type StockImportCreation = Optional<
   | 'note'
   | 'input_total_pieces'
   | 'units_per_box'
-  | 'boxes_per_carton'
 >;
 
 export class StockImport extends Model<StockImportAttributes, StockImportCreation> {
@@ -49,7 +47,6 @@ export class StockImport extends Model<StockImportAttributes, StockImportCreatio
   declare note: string | null;
   declare input_total_pieces: number | null;
   declare units_per_box: number | null;
-  declare boxes_per_carton: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
 }
@@ -71,7 +68,6 @@ StockImport.init(
     note: { type: DataTypes.STRING(500) },
     input_total_pieces: { type: DataTypes.INTEGER, allowNull: true },
     units_per_box: { type: DataTypes.INTEGER, allowNull: true },
-    boxes_per_carton: { type: DataTypes.INTEGER, allowNull: true },
   },
   { sequelize, tableName: 'stock_imports' },
 );

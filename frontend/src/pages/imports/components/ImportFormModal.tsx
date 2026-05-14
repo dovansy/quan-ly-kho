@@ -254,8 +254,6 @@ export const ImportFormModal = ({
         input_total_pieces:
           inputMode === 'vien' ? Number(values.total_pieces_input || 0) || null : null,
         units_per_box: inputMode === 'vien' ? Number(values.units_per_box || 0) || null : null,
-        boxes_per_carton:
-          inputMode === 'vien' ? Number(values.units_per_carton || 0) || null : null,
       };
 
       const total = payload.carton_quantity * payload.units_per_carton + payload.piece_quantity;
