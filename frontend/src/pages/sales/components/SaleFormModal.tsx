@@ -44,20 +44,28 @@ export const SaleFormModal = ({
 
   const inventoryOptions = useMemo(
     () =>
-      inventoryList.map((it: any) => {
-        const unit = it.small_unit?.label || '';
-        const upc = Number(it.units_per_carton) || 0;
-        const pending = Number(it.pending_reserved) || 0;
-        const available = Number(it.available_pieces ?? it.stock_pieces) || 0;
-        const availableStr = formatCartonPiecesPlain(available, upc, unit);
-        const pendingHint =
-          pending > 0 ? ` — chờ xuất: ${formatCartonPiecesPlain(pending, upc, unit)}` : '';
-        return {
-          label: `${it.product_name} — ${it.warehouse_name} | ${it.supplier} | Lô: ${it.batch} (Tồn: ${availableStr}${pendingHint})`,
-          value: it.id,
-          record: it,
-        };
-      }),
+      [...inventoryList]
+        .sort((a: any, b: any) => {
+          const byName = (a.product_name || '').localeCompare(b.product_name || '', 'vi');
+          if (byName !== 0) return byName;
+          const byWh = (a.warehouse_name || '').localeCompare(b.warehouse_name || '', 'vi');
+          if (byWh !== 0) return byWh;
+          return (a.batch || '').localeCompare(b.batch || '', 'vi');
+        })
+        .map((it: any) => {
+          const unit = it.small_unit?.label || '';
+          const upc = Number(it.units_per_carton) || 0;
+          const pending = Number(it.pending_reserved) || 0;
+          const available = Number(it.available_pieces ?? it.stock_pieces) || 0;
+          const availableStr = formatCartonPiecesPlain(available, upc, unit);
+          const pendingHint =
+            pending > 0 ? ` — chờ xuất: ${formatCartonPiecesPlain(pending, upc, unit)}` : '';
+          return {
+            label: `${it.product_name} — ${it.warehouse_name} | ${it.supplier} | Lô: ${it.batch} (Tồn: ${availableStr}${pendingHint})`,
+            value: it.id,
+            record: it,
+          };
+        }),
     [inventoryList]
   );
 
@@ -341,11 +349,11 @@ export const SaleFormModal = ({
           </p>
         )}
         {lines.map((line, idx) => {
-          const usedProductNames = new Set(
-            lines.filter((l, i) => i !== idx && l.product_name).map(l => l.product_name)
+          const usedInventoryIds = new Set(
+            lines.filter((l, i) => i !== idx && l.inventory_id).map(l => l.inventory_id)
           );
           const optsForThisLine = inventoryOptions.filter(
-            o => !usedProductNames.has(o.record.product_name)
+            o => !usedInventoryIds.has(o.record.id)
           );
           return (
             <SaleLineRow
