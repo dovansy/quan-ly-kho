@@ -129,7 +129,7 @@ export const SaleFormModal = ({
     onClose();
   };
 
-  const addLine = () => setLines(prev => [...prev, createEmptyLine()]);
+  const addLine = () => setLines(prev => [createEmptyLine(), ...prev]);
 
   const removeLine = (idx: number) => setLines(prev => prev.filter((_, i) => i !== idx));
 
@@ -352,9 +352,7 @@ export const SaleFormModal = ({
           const usedInventoryIds = new Set(
             lines.filter((l, i) => i !== idx && l.inventory_id).map(l => l.inventory_id)
           );
-          const optsForThisLine = inventoryOptions.filter(
-            o => !usedInventoryIds.has(o.record.id)
-          );
+          const optsForThisLine = inventoryOptions.filter(o => !usedInventoryIds.has(o.record.id));
           return (
             <SaleLineRow
               key={idx}
