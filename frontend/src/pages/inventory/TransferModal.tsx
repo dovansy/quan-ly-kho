@@ -1,6 +1,7 @@
 import { Col, Form, Input, Row } from 'antd';
 import { useEffect, useMemo } from 'react';
 import { FiArrowRight } from 'react-icons/fi';
+import { AppButton } from '@/components/atoms/AppButton';
 import { AppInput } from '@/components/atoms/AppInput';
 import { AppInputNumber } from '@/components/atoms/AppInput/InputNumber';
 import { AppSelect } from '@/components/atoms/AppSelect';
@@ -30,10 +31,17 @@ interface Props {
   open: boolean;
   inventoryList: InventoryRow[];
   warehouseOptions: { label: string; value: number }[];
+  initialInventoryId?: number;
   onClose: () => void;
 }
 
-export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }: Props) => {
+export const TransferModal = ({
+  open,
+  inventoryList,
+  warehouseOptions,
+  initialInventoryId,
+  onClose,
+}: Props) => {
   const [form] = Form.useForm();
   const transfer = useTransferInventory();
   const { success, error, warning } = useAppNotification();
@@ -82,8 +90,12 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
   useEffect(() => {
     if (!open) {
       form.resetFields();
+      return;
     }
-  }, [open, form]);
+    if (initialInventoryId) {
+      form.setFieldsValue({ inventory_id: initialInventoryId });
+    }
+  }, [open, initialInventoryId, form]);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -208,15 +220,32 @@ export const TransferModal = ({ open, inventoryList, warehouseOptions, onClose }
           </Row>
         )}
 
-        <div className="pt-3 pb-2 mt-2 mb-2 text-base font-semibold border-t">Chuyển kho</div>
+        <div className="flex items-center justify-between pt-3 pb-2 mt-2 mb-2 border-t">
+          <span className="text-base font-semibold">Kho</span>
+          <AppButton
+            size="small"
+            type="link"
+            disabled={!selected || available <= 0}
+            onClick={() => {
+              const carton = upc > 1 ? Math.floor(available / upc) : 0;
+              const piece = upc > 1 ? available % upc : available;
+              form.setFieldsValue({
+                carton_quantity: carton,
+                piece_quantity: piece,
+              });
+            }}
+          >
+            Chuyển tất cả
+          </AppButton>
+        </div>
 
-        <Row gutter={[8, 0]} align="bottom">
+        <Row gutter={[8, 0]} align="middle">
           <Col xs={24} sm={11}>
             <Form.Item label="Kho hiện tại">
               <AppInput value={selected?.warehouse_name || ''} disabled placeholder="—" />
             </Form.Item>
           </Col>
-          <Col xs={24} sm={2} className="flex items-center justify-center pb-2">
+          <Col xs={24} sm={2} className="flex items-center justify-center">
             <FiArrowRight size={24} className="text-gray-500" />
           </Col>
           <Col xs={24} sm={11}>

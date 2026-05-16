@@ -13,7 +13,7 @@ import { renderExpiryTag } from '@/utils/expiry';
 import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
-import { Col, Form, Popconfirm, Row, Space, Tag, type TableProps } from 'antd';
+import { Col, Form, Popconfirm, Row, Space, Tag, Tooltip, type TableProps } from 'antd';
 import type { SortOrder } from 'antd/es/table/interface';
 import dayjs from 'dayjs';
 import { useState } from 'react';
@@ -26,6 +26,7 @@ const InventoryPage = () => {
   const [selected, setSelected] = useState<Record<string, any>>({});
   const [keywordInput, setKeywordInput] = useState('');
   const [transferOpen, setTransferOpen] = useState(false);
+  const [transferInitialId, setTransferInitialId] = useState<number | undefined>(undefined);
   const [sort, setSort] = useState<{
     sort_by?: 'product_name' | 'warehouse_name' | 'nearest_expiry';
     sort_order?: 'asc' | 'desc';
@@ -124,7 +125,11 @@ const InventoryPage = () => {
         const name = item.product_name || 'Khác';
         if (name !== currentProductName) {
           const totalVal = productTotals[name];
-          item.total = formatCartonPiecesPlain(totalVal, item.units_per_carton, item.small_unit?.label);
+          item.total = formatCartonPiecesPlain(
+            totalVal,
+            item.units_per_carton,
+            item.small_unit?.label
+          );
           currentProductName = name;
         } else {
           item.total = '';
@@ -136,7 +141,7 @@ const InventoryPage = () => {
       for (let i = 1; i <= sorted.length; i++) {
         const name = sorted[i]?.product_name || '';
         const prevName = sorted[i - 1]?.product_name || 'Khác';
-        
+
         if (i === sorted.length || name !== prevName) {
           if (i - 1 > mergeStartIdx) {
             merges.push({
@@ -267,6 +272,32 @@ const InventoryPage = () => {
       align: 'right' as const,
       render: (val: number, record: any) =>
         renderCartonPieces(val, record.units_per_carton, record.small_unit?.label),
+    },
+    {
+      title: 'Hành động',
+      key: 'actions',
+      align: 'center' as const,
+      fixed: 'right' as const,
+      width: 100,
+      render: (_: any, record: any) => {
+        const avail = Number(record.available_pieces ?? record.stock_pieces) || 0;
+        return (
+          <div className="flex items-center justify-center gap-1">
+            <Tooltip title="Chuyển kho">
+              <AppButton
+                type="text"
+                size="small"
+                icon={<FiRepeat />}
+                disabled={avail <= 0}
+                onClick={() => {
+                  setTransferInitialId(record.id);
+                  setTransferOpen(true);
+                }}
+              />
+            </Tooltip>
+          </div>
+        );
+      },
     },
   ];
 
@@ -404,7 +435,14 @@ const InventoryPage = () => {
                 Xuất Excel
               </AppButton>
             )}
-            <AppButton icon={<FiRepeat />} type="primary" onClick={() => setTransferOpen(true)}>
+            <AppButton
+              icon={<FiRepeat />}
+              type="primary"
+              onClick={() => {
+                setTransferInitialId(undefined);
+                setTransferOpen(true);
+              }}
+            >
               Chuyển kho
             </AppButton>
           </>
@@ -419,11 +457,15 @@ const InventoryPage = () => {
       <TransferModal
         open={transferOpen}
         inventoryList={dataSource}
+        initialInventoryId={transferInitialId}
         warehouseOptions={(warehouseListRes?.data || []).map((w: any) => ({
           label: w.label,
           value: w.id,
         }))}
-        onClose={() => setTransferOpen(false)}
+        onClose={() => {
+          setTransferOpen(false);
+          setTransferInitialId(undefined);
+        }}
       />
     </div>
   );

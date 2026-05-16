@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   inventoryService,
   InventoryFilters,
@@ -28,6 +28,7 @@ export function useGetInventoryFilters(filters?: InventoryFilters) {
   return useQuery({
     queryKey: INVENTORY_QUERY_KEY.filters(filters),
     queryFn: async () => (await inventoryService.filters(filters)).data,
+    placeholderData: keepPreviousData,
   });
 }
 
