@@ -13,10 +13,14 @@ export const INVENTORY_QUERY_KEY = {
   transfers: (f?: TransferFilters) => ['inventory', 'transfers', f] as const,
 };
 
-export function useGetInventory(filters?: InventoryFilters) {
+export function useGetInventory(
+  filters?: InventoryFilters,
+  options?: { enabled?: boolean }
+) {
   return useQuery({
     queryKey: INVENTORY_QUERY_KEY.list(filters),
     queryFn: async () => (await inventoryService.list(filters)).data,
+    enabled: options?.enabled,
   });
 }
 

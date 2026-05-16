@@ -1,4 +1,4 @@
-import { Col, Form, Row } from 'antd';
+import { Col, Form, Row, Spin } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
@@ -13,16 +13,16 @@ import { DATE_FORMAT } from '@/constants/format';
 import { SaleType } from '@/constants/enums';
 import { paymentStatusOptions, saleTypeLabels } from '@/constants/options';
 import { PaymentStatus } from '@/constants/enums';
-import { useCreateSale, useGetSales, useUpdateSale } from '@/hooks/api/sales';
+import { useCreateSale, useGetSaleDetail, useGetSales, useUpdateSale } from '@/hooks/api/sales';
+import { useGetInventory } from '@/hooks/api/inventory';
 import { formatCartonPiecesPlain, formatCurrency, toApiDate } from '@/utils/format';
-import { createEmptyLine, findInventoryFor, SaleLine, SaleOrderRow } from '../types';
+import { createEmptyLine, findInventoryFor, mapSaleItems, SaleLine, SaleOrderRow } from '../types';
 import { SaleLineRow } from './SaleLineRow';
 
 interface Props {
   open: boolean;
   editing: SaleOrderRow | null;
   defaultSaleType?: string;
-  inventoryList: any[];
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -31,7 +31,6 @@ export const SaleFormModal = ({
   open,
   editing,
   defaultSaleType,
-  inventoryList,
   onClose,
   onSuccess,
 }: Props) => {
@@ -42,9 +41,48 @@ export const SaleFormModal = ({
   const currentSaleType = Form.useWatch('saleType', form);
   const { success, error, warning } = useAppNotification();
 
+  // Inventory mặc định (create mode): chỉ fetch khi modal mở.
+  const createInvQuery = useGetInventory(undefined, { enabled: open && !editing });
+  // Edit mode: fetch toàn bộ inventory (kể cả lô đã hết) và bỏ trừ pending của
+  // chính đơn này — nếu không, các lô đã bán hết sẽ không nằm trong list,
+  // khiến danh sách sản phẩm trong modal không fill được thông tin.
+  const editInvQuery = useGetInventory(
+    editing && open ? { includeEmpty: true, exclude_pending_sale_order_id: editing.id } : undefined,
+    { enabled: !!editing && open }
+  );
+  const effectiveInventoryList: any[] = useMemo(
+    () =>
+      editing && open
+        ? editInvQuery.data?.data || []
+        : createInvQuery.data?.data || [],
+    [editing, open, editInvQuery.data, createInvQuery.data]
+  );
+
+  // Fetch chi tiết đơn (items) — list không trả items để tối ưu tốc độ.
+  const detailQuery = useGetSaleDetail(editing?.id ?? null, !!editing && open);
+  const editingItems = useMemo(
+    () => mapSaleItems(detailQuery.data?.data?.items),
+    [detailQuery.data]
+  );
+
+  const editingInventoryIds = useMemo(() => {
+    if (!editing) return new Set<number>();
+    const ids = new Set<number>();
+    editingItems.forEach(it => {
+      const inv = findInventoryFor(effectiveInventoryList, it);
+      if (inv?.id) ids.add(inv.id);
+    });
+    return ids;
+  }, [editing, editingItems, effectiveInventoryList]);
+
   const inventoryOptions = useMemo(
     () =>
-      [...inventoryList]
+      [...effectiveInventoryList]
+        .filter((it: any) => {
+          // Ẩn lô hết tồn ra khỏi dropdown, trừ khi nó đang được dùng trong đơn edit.
+          const stock = Number(it.available_pieces ?? it.stock_pieces) || 0;
+          return stock > 0 || editingInventoryIds.has(it.id);
+        })
         .sort((a: any, b: any) => {
           const byName = (a.product_name || '').localeCompare(b.product_name || '', 'vi');
           if (byName !== 0) return byName;
@@ -66,10 +104,14 @@ export const SaleFormModal = ({
             record: it,
           };
         }),
-    [inventoryList]
+    [effectiveInventoryList, editingInventoryIds]
   );
 
-  const { data: brokerSalesRes } = useGetSales({ sale_type: SaleType.BROKER, limit: 1000 });
+  // Chỉ fetch khi modal mở VÀ user đang chọn loại broker — tránh request thừa lúc page load.
+  const { data: brokerSalesRes } = useGetSales(
+    { sale_type: SaleType.BROKER, limit: 1000 },
+    { enabled: open && currentSaleType === SaleType.BROKER }
+  );
   const brokerNameOpts = useMemo(() => {
     const set = new Set<string>();
     (brokerSalesRes?.data || []).forEach((s: any) => {
@@ -92,10 +134,14 @@ export const SaleFormModal = ({
         paymentStatus: editing.payment_status,
         saleDate: editing.sale_date ? dayjs(editing.sale_date) : undefined,
       });
+      // Đợi cả detail (items) và inventory edit-mode load xong rồi mới enrich.
+      if (editInvQuery.isLoading || !editInvQuery.data) return;
+      if (detailQuery.isLoading || !detailQuery.data) return;
       const isEditingPending = editing.payment_status === 'pending';
-      const enriched = editing.items.map(it => {
-        const inv = findInventoryFor(inventoryList, it);
-        const upc = Number(inv?.units_per_carton) || 0;
+      const enriched = editingItems.map(it => {
+        const inv = findInventoryFor(effectiveInventoryList, it);
+        // Ưu tiên upc từ item (BE đã trả từ stock_imports), fallback inventory.
+        const upc = Number(it.units_per_carton) || Number(inv?.units_per_carton) || 0;
         const carton = upc > 0 ? Math.floor(it.quantity / upc) : 0;
         const piece = upc > 0 ? it.quantity % upc : it.quantity;
         // Khi edit đơn pending, cộng lại số lượng của chính line này vào available
@@ -121,7 +167,16 @@ export const SaleFormModal = ({
       });
       setLines([]);
     }
-  }, [open, editing, defaultSaleType, inventoryList, form]);
+  }, [
+    open,
+    editing,
+    defaultSaleType,
+    effectiveInventoryList,
+    editInvQuery.isLoading,
+    editingItems,
+    detailQuery.isLoading,
+    form,
+  ]);
 
   const close = () => {
     form.resetFields();
@@ -276,105 +331,109 @@ export const SaleFormModal = ({
       loading={create.isPending || update.isPending}
       width={1100}
     >
-      <Form form={form} layout="vertical" className="pt-4" autoComplete="off">
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={8}>
-            <Form.Item
-              name="customerName"
-              label={currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'}
-              rules={[{ required: true }]}
-            >
-              <AppInput
-                placeholder={
-                  currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'
-                }
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item name="customerPhone" label="SĐT">
-              <AppInput placeholder="SĐT" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item name="saleDate" label="Ngày bán" rules={[{ required: true }]}>
-              <AppDatePicker format={DATE_FORMAT.DISPLAY} className="w-full" />
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row gutter={[16, 0]}>
-          <Col xs={24} sm={16}>
-            <Form.Item name="customerAddress" label="Địa chỉ">
-              <AppInput placeholder="Địa chỉ" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item name="paymentStatus" label="Trạng thái" rules={[{ required: true }]}>
-              <AppSelect options={paymentStatusOptions} />
-            </Form.Item>
-          </Col>
-        </Row>
-        {currentSaleType === SaleType.BROKER && (
+      <Spin spinning={!!editing && (detailQuery.isLoading || editInvQuery.isLoading)}>
+        <Form form={form} layout="vertical" className="pt-4" autoComplete="off">
           <Row gutter={[16, 0]}>
-            <Col xs={24} sm={16}>
+            <Col xs={24} sm={8}>
               <Form.Item
-                name="brokerName"
-                label="Tên nhà môi giới"
-                rules={[{ required: true, message: 'Vui lòng nhập tên nhà môi giới' }]}
+                name="customerName"
+                label={currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'}
+                rules={[{ required: true }]}
               >
-                <AppAutoComplete
-                  placeholder="Nhập hoặc chọn nhà môi giới"
-                  options={brokerNameOpts}
-                  filterOption={(i, o) =>
-                    ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
+                <AppInput
+                  placeholder={
+                    currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'
                   }
                 />
               </Form.Item>
             </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="customerPhone" label="SĐT">
+                <AppInput placeholder="SĐT" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="saleDate" label="Ngày bán" rules={[{ required: true }]}>
+                <AppDatePicker format={DATE_FORMAT.DISPLAY} className="w-full" />
+              </Form.Item>
+            </Col>
           </Row>
-        )}
-        <Form.Item name="saleType" hidden>
-          <AppInput />
-        </Form.Item>
+          <Row gutter={[16, 0]}>
+            <Col xs={24} sm={16}>
+              <Form.Item name="customerAddress" label="Địa chỉ">
+                <AppInput placeholder="Địa chỉ" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="paymentStatus" label="Trạng thái" rules={[{ required: true }]}>
+                <AppSelect options={paymentStatusOptions} />
+              </Form.Item>
+            </Col>
+          </Row>
+          {currentSaleType === SaleType.BROKER && (
+            <Row gutter={[16, 0]}>
+              <Col xs={24} sm={16}>
+                <Form.Item
+                  name="brokerName"
+                  label="Tên nhà môi giới"
+                  rules={[{ required: true, message: 'Vui lòng nhập tên nhà môi giới' }]}
+                >
+                  <AppAutoComplete
+                    placeholder="Nhập hoặc chọn nhà môi giới"
+                    options={brokerNameOpts}
+                    filterOption={(i, o) =>
+                      ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
+                    }
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
+          <Form.Item name="saleType" hidden>
+            <AppInput />
+          </Form.Item>
 
-        <div className="flex items-center justify-between pt-2 mt-2 mb-2 border-t">
-          <h4 className="m-0 text-base font-semibold">Danh sách sản phẩm bán</h4>
-          <AppButton icon={<FiPlus />} onClick={addLine} type="default">
-            Thêm sản phẩm
-          </AppButton>
-        </div>
-        {lines.length === 0 && (
-          <p className="py-4 text-sm text-center text-gray-400">
-            Chưa có sản phẩm nào — bấm "Thêm sản phẩm" để chọn từ kho.
-          </p>
-        )}
-        {lines.map((line, idx) => {
-          const usedInventoryIds = new Set(
-            lines.filter((l, i) => i !== idx && l.inventory_id).map(l => l.inventory_id)
-          );
-          const optsForThisLine = inventoryOptions.filter(o => !usedInventoryIds.has(o.record.id));
-          return (
-            <SaleLineRow
-              key={idx}
-              idx={idx}
-              isFirst={idx === 0}
-              line={line}
-              inventoryOptions={optsForThisLine}
-              onPick={onPickInventory}
-              onUpdate={updateLine}
-              onRemove={removeLine}
-            />
-          );
-        })}
-        {lines.length > 0 && (
-          <div className="text-lg font-bold text-right">
-            Tổng:{' '}
-            <span className="text-primary">
-              {formatCurrency(lines.reduce((s, l) => s + l.total, 0))}
-            </span>
+          <div className="flex items-center justify-between pt-2 mt-2 mb-2 border-t">
+            <h4 className="m-0 text-base font-semibold">Danh sách sản phẩm bán</h4>
+            <AppButton icon={<FiPlus />} onClick={addLine} type="default">
+              Thêm sản phẩm
+            </AppButton>
           </div>
-        )}
-      </Form>
+          {lines.length === 0 && (
+            <p className="py-4 text-sm text-center text-gray-400">
+              Chưa có sản phẩm nào — bấm "Thêm sản phẩm" để chọn từ kho.
+            </p>
+          )}
+          {lines.map((line, idx) => {
+            const usedInventoryIds = new Set(
+              lines.filter((l, i) => i !== idx && l.inventory_id).map(l => l.inventory_id)
+            );
+            const optsForThisLine = inventoryOptions.filter(
+              o => !usedInventoryIds.has(o.record.id)
+            );
+            return (
+              <SaleLineRow
+                key={idx}
+                idx={idx}
+                isFirst={idx === 0}
+                line={line}
+                inventoryOptions={optsForThisLine}
+                onPick={onPickInventory}
+                onUpdate={updateLine}
+                onRemove={removeLine}
+              />
+            );
+          })}
+          {lines.length > 0 && (
+            <div className="text-lg font-bold text-right">
+              Tổng:{' '}
+              <span className="text-primary">
+                {formatCurrency(lines.reduce((s, l) => s + l.total, 0))}
+              </span>
+            </div>
+          )}
+        </Form>
+      </Spin>
     </CrudModal>
   );
 };

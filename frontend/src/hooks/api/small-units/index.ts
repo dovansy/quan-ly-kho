@@ -14,11 +14,12 @@ export function useGetSmallUnits(filters?: SmallUnitFilters) {
   });
 }
 
-export function useGetSmallUnitOptions() {
+export function useGetSmallUnitOptions(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: SMALL_UNIT_QUERY_KEY.options(),
     queryFn: async () => (await smallUnitsService.options()).data,
     staleTime: 5 * 60 * 1000,
+    enabled: options?.enabled,
   });
 }
 

@@ -27,13 +27,17 @@ export interface SaleOrderRow {
   customer_address: string;
   broker_name: string | null;
   sale_type: string;
-  items: SaleLine[];
+  items_count: number;
   total_amount: number;
   paid: boolean;
   payment_status: 'paid' | 'unpaid' | 'pending';
   sale_date: string;
   returned: boolean;
   returned_at: string | null;
+}
+
+export interface SaleOrderDetail extends SaleOrderRow {
+  items: SaleLine[];
 }
 
 export const mapSale = (s: any): SaleOrderRow => ({
@@ -45,7 +49,17 @@ export const mapSale = (s: any): SaleOrderRow => ({
   customer_address: s.customer_address || '',
   broker_name: s.broker_name || null,
   sale_type: s.sale_type,
-  items: (s.items || []).map((i: any) => ({
+  items_count: Number(s.items_count) || 0,
+  total_amount: Number(s.total_amount),
+  paid: Boolean(s.paid),
+  payment_status: s.payment_status || (s.paid ? 'paid' : 'unpaid'),
+  sale_date: s.sale_date,
+  returned: Boolean(s.returned),
+  returned_at: s.returned_at || null,
+});
+
+export const mapSaleItems = (items: any[] = []): SaleLine[] =>
+  items.map((i: any) => ({
     id: i.id,
     product_id: i.product_id,
     product_name: i.product_name,
@@ -56,19 +70,17 @@ export const mapSale = (s: any): SaleOrderRow => ({
     small_unit_id: i.small_unit_id,
     small_unit_label: i.small_unit?.label || '',
     available: 0,
-    units_per_carton: 0,
+    units_per_carton: Number(i.units_per_carton) || 0,
     carton_quantity: 0,
     piece_quantity: 0,
     quantity: Number(i.quantity) || 0,
     unit_price: Number(i.unit_price) || 0,
     total: Number(i.total) || 0,
-  })),
-  total_amount: Number(s.total_amount),
-  paid: Boolean(s.paid),
-  payment_status: s.payment_status || (s.paid ? 'paid' : 'unpaid'),
-  sale_date: s.sale_date,
-  returned: Boolean(s.returned),
-  returned_at: s.returned_at || null,
+  }));
+
+export const mapSaleDetail = (s: any): SaleOrderDetail => ({
+  ...mapSale(s),
+  items: mapSaleItems(s.items),
 });
 
 export const createEmptyLine = (): SaleLine => ({

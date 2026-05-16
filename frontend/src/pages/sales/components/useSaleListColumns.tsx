@@ -70,7 +70,7 @@ export const useSaleListColumns = ({
     title: 'Số sản phẩm',
     key: 'line_count',
     align: 'center' as const,
-    render: (_: any, r: SaleOrderRow) => r.items.length,
+    render: (_: any, r: SaleOrderRow) => r.items_count,
   },
   {
     title: 'Tổng tiền (vnđ)',

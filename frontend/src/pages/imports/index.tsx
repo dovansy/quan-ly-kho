@@ -6,8 +6,7 @@ import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
 import { useDeleteImport, useGetImports } from '@/hooks/api/imports';
-import { useGetProductCategories, useGetProducts } from '@/hooks/api/products';
-import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
+import { useGetProducts } from '@/hooks/api/products';
 import { useGetWarehouseList } from '@/hooks/api/warehouses';
 import { stockImportsService } from '@/services/stockImports.service';
 import { ImportFilterForm } from './components/ImportFilterForm';
@@ -31,8 +30,6 @@ const ImportsPage = () => {
 
   const { data: importsRes, isLoading } = useGetImports({ ...filters, ...sort });
   const { data: warehouseListRes } = useGetWarehouseList();
-  const { data: smallUnitsRes } = useGetSmallUnitOptions();
-  const { data: catRes } = useGetProductCategories();
   const { data: productsRes } = useGetProducts({ limit: 1000 });
   const { data: allImportsRes } = useGetImports({ limit: 1000 } as any);
   const remove = useDeleteImport();
@@ -43,8 +40,6 @@ const ImportsPage = () => {
     label: w.label,
     value: w.id,
   }));
-  const smallUnitOpts = smallUnitsRes?.data || [];
-  const categoryOpts = catRes?.data || [];
   const productList: any[] = productsRes?.data || [];
   const productNameOpts = productList.map((p: any) => ({ label: p.name, value: p.name }));
   const allImports: ImportRecord[] = (allImportsRes?.data || []) as any;
@@ -227,8 +222,6 @@ const ImportsPage = () => {
         open={modalOpen}
         editing={editing}
         warehouseOptions={allWarehouseOptions}
-        smallUnitOpts={smallUnitOpts}
-        categoryOpts={categoryOpts}
         productList={productList}
         productNameOpts={productNameOpts}
         allImports={allImports}

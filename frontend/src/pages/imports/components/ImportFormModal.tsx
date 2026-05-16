@@ -6,6 +6,8 @@ import { CrudModal } from '@/components/organisms/crud-modal';
 import { useAppNotification } from '@/components/templates/notification';
 import { DATE_FORMAT } from '@/constants/format';
 import { useCreateImport, useUpdateImport } from '@/hooks/api/imports';
+import { useGetProductCategories } from '@/hooks/api/products';
+import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
 import { formatNumber } from '@/utils/format';
 import { Col, Form, Row, Segmented } from 'antd';
 import dayjs from 'dayjs';
@@ -17,8 +19,6 @@ interface Props {
   open: boolean;
   editing: ImportRecord | null;
   warehouseOptions: { label: string; value: number }[];
-  smallUnitOpts: { label: string; value: number; code?: string }[];
-  categoryOpts: { label: string; value: string }[];
   productList: any[];
   productNameOpts: { label: string; value: string }[];
   allImports: ImportRecord[];
@@ -29,8 +29,6 @@ export const ImportFormModal = ({
   open,
   editing,
   warehouseOptions,
-  smallUnitOpts,
-  categoryOpts,
   productList,
   productNameOpts,
   allImports,
@@ -40,6 +38,12 @@ export const ImportFormModal = ({
   const create = useCreateImport();
   const update = useUpdateImport();
   const { success, error, warning } = useAppNotification();
+
+  // Chỉ fetch khi modal mở — react-query cache 5 phút nên mở lại không refetch.
+  const { data: smallUnitsRes } = useGetSmallUnitOptions({ enabled: open });
+  const { data: catRes } = useGetProductCategories({ enabled: open });
+  const smallUnitOpts = smallUnitsRes?.data || [];
+  const categoryOpts = catRes?.data || [];
 
   const [inputMode, setInputMode] = useState<'kien' | 'vien'>('kien');
 

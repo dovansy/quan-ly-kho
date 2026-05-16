@@ -14,6 +14,7 @@ export interface SaleItem {
   quantity: number;
   unit_price: number;
   total: number;
+  units_per_carton?: number;
 }
 
 export interface Sale {
@@ -25,7 +26,10 @@ export interface Sale {
   customer_address: string;
   broker_name: string | null;
   sale_type: string;
-  items: SaleItem[];
+  // Mặc định API list không trả items để tối ưu tốc độ — chỉ trả items_count.
+  // Detail (GET /sales/:id) hoặc list?include_items=true mới có items.
+  items?: SaleItem[];
+  items_count: number;
   total_amount: number;
   paid: boolean;
   payment_status: 'paid' | 'unpaid' | 'pending';
@@ -58,11 +62,15 @@ export interface SaleFilters {
   limit?: number;
   sort_by?: 'customer_name' | 'status' | 'sale_date' | 'total_amount';
   sort_order?: 'asc' | 'desc';
+  include_items?: boolean;
 }
 
 export const salesService = {
   getAll: (params?: SaleFilters) =>
     httpClient.get<APIResponse<Sale[]>>('/sales', { params }),
+
+  getDetail: (id: number) =>
+    httpClient.get<APIResponse<Sale>>(`/sales/${id}`),
 
   create: (data: CreateSaleRequest) =>
     httpClient.post<APIResponse<Sale>>('/sales', data),

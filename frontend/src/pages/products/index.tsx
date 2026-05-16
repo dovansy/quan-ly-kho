@@ -2,7 +2,6 @@ import { Form, type TableProps } from 'antd';
 import { useState } from 'react';
 import { TableSection } from '@/components/organisms/table-section';
 import { useGetProductCategories, useGetProducts } from '@/hooks/api/products';
-import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
 import { ProductFilterForm } from './components/ProductFilterForm';
 import { ProductFormModal } from './components/ProductFormModal';
 import { useProductListColumns } from './components/useProductListColumns';
@@ -18,11 +17,9 @@ const ProductsPage = () => {
 
   const { data: res, isLoading } = useGetProducts({ ...filters, ...sort });
   const { data: catRes } = useGetProductCategories();
-  const { data: smallUnitsRes } = useGetSmallUnitOptions();
 
   const data: ProductRow[] = (res?.data || []) as any;
   const categoryOpts = catRes?.data || [];
-  const smallUnitOpts = smallUnitsRes?.data || [];
   const productNameOpts = data.map((p: any) => ({ label: p.name, value: p.name }));
 
   const onSearch = (v: any) =>
@@ -92,7 +89,6 @@ const ProductsPage = () => {
         open={modalOpen}
         editing={editing}
         categoryOpts={categoryOpts}
-        smallUnitOpts={smallUnitOpts}
         onClose={closeModal}
       />
     </div>

@@ -6,29 +6,36 @@ import { AppModal } from '@/components/atoms/AppModal';
 import { AppTable } from '@/components/atoms/AppTable/AppTable';
 import { SaleType } from '@/constants/enums';
 import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
+import { useGetSaleDetail } from '@/hooks/api/sales';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
-import { findInventoryFor, SaleOrderRow } from '../types';
+import { mapSaleItems, SaleOrderRow } from '../types';
 import { exportSaleDetailExcel } from '../utils';
 
 interface Props {
   open: boolean;
   viewing: SaleOrderRow | null;
-  inventoryList: any[];
   onClose: () => void;
 }
 
-export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props) => {
+export const SaleDetailModal = ({ open, viewing, onClose }: Props) => {
+  const { data: detailRes, isLoading } = useGetSaleDetail(
+    viewing?.id ?? null,
+    open && !!viewing
+  );
+  const detailItems = useMemo(
+    () => mapSaleItems(detailRes?.data?.items),
+    [detailRes]
+  );
+
   const enrichedItems = useMemo(() => {
-    if (!viewing) return [];
-    return viewing.items.map(it => {
-      const inv = findInventoryFor(inventoryList, it);
-      const upc = Number(inv?.units_per_carton) || 0;
+    return detailItems.map(it => {
+      const upc = Number(it.units_per_carton) || 0;
       const carton = upc > 0 ? Math.floor(it.quantity / upc) : 0;
       const piece = upc > 0 ? it.quantity % upc : it.quantity;
       return { ...it, units_per_carton: upc, carton_quantity: carton, piece_quantity: piece };
     });
-  }, [viewing, inventoryList]);
+  }, [detailItems]);
 
   return (
     <AppModal
@@ -103,6 +110,7 @@ export const SaleDetailModal = ({ open, viewing, inventoryList, onClose }: Props
           <h4 className="mb-2 text-base font-semibold">Danh sách sản phẩm</h4>
           <AppTable
             pagination={false}
+            loading={isLoading}
             rowKey={(r: any, i) => `${r.id ?? i}`}
             dataSource={enrichedItems}
             columns={[

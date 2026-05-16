@@ -4,7 +4,6 @@ import { FiDownload } from 'react-icons/fi';
 import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
-import { useGetInventory } from '@/hooks/api/inventory';
 import { useConfirmShipment, useDeleteSale, useGetSales, useReturnSale } from '@/hooks/api/sales';
 import { salesService } from '@/services/sales.service';
 import { toApiDate } from '@/utils/format';
@@ -14,7 +13,7 @@ import { SaleFormModal } from './components/SaleFormModal';
 import { SaleStatsCards } from './components/SaleStatsCards';
 import { SaleTypeButtons } from './components/SaleTypeButtons';
 import { useSaleListColumns } from './components/useSaleListColumns';
-import { mapSale, SaleOrderRow } from './types';
+import { mapSale, mapSaleDetail, SaleOrderRow } from './types';
 import { exportSalesExcel } from './utils';
 
 const SORTABLE_SALES = ['customer_name', 'status', 'sale_date', 'total_amount'] as const;
@@ -32,13 +31,11 @@ const SalesPage = () => {
   const [sort, setSort] = useState<{ sort_by?: SortableSaleField; sort_order?: 'asc' | 'desc' }>({});
 
   const { data: salesRes, isLoading } = useGetSales({ ...filters, ...sort });
-  const { data: inventoryRes } = useGetInventory();
   const remove = useDeleteSale();
   const returnSale = useReturnSale();
   const confirmShipment = useConfirmShipment();
   const { success, error } = useAppNotification();
 
-  const inventoryList = inventoryRes?.data || [];
   const data = (salesRes?.data || []).map(mapSale);
   const loading = isLoading || remove.isPending || returnSale.isPending;
 
@@ -156,9 +153,10 @@ const SalesPage = () => {
         payment_status: filters.payment_status,
         saleDate: filters.saleDate,
         limit: 100000,
+        include_items: true,
       });
-      const orders = (res.data?.data || []).map(mapSale);
-      exportSalesExcel(orders, inventoryList);
+      const orders = (res.data?.data || []).map(mapSaleDetail);
+      exportSalesExcel(orders);
     } catch (e: any) {
       error({
         message: 'Lỗi xuất Excel',
@@ -235,14 +233,12 @@ const SalesPage = () => {
         open={formModalOpen}
         editing={editing}
         defaultSaleType={defaultSaleType}
-        inventoryList={inventoryList}
         onClose={closeFormModal}
       />
 
       <SaleDetailModal
         open={viewModalOpen}
         viewing={viewing}
-        inventoryList={inventoryList}
         onClose={closeView}
       />
     </div>

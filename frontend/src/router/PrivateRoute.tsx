@@ -4,22 +4,18 @@ import { ROUTE_PATH } from '@/constants/app';
 import { useAppSelector, useAppDispatch } from '@/shared/redux/hooks';
 import { selectIsAuthenticated } from '@/store/auth/selectors';
 import { updateUser } from '@/store/auth';
-import { authService } from '@/services/auth.service';
+import { useGetMe } from '@/hooks/api/auth';
 
 export default function PrivateRoute() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const dispatch = useAppDispatch();
 
-  // Sync user data từ server mỗi khi app load
+  // react-query dedupe + cache → StrictMode mount 2 lần cũng chỉ 1 request /auth/me.
+  const { data: meRes } = useGetMe(isAuthenticated);
+
   useEffect(() => {
-    if (isAuthenticated) {
-      authService.getMe().then(res => {
-        if (res.data?.data) {
-          dispatch(updateUser(res.data.data));
-        }
-      }).catch(() => {});
-    }
-  }, [isAuthenticated, dispatch]);
+    if (meRes?.data) dispatch(updateUser(meRes.data));
+  }, [meRes, dispatch]);
 
   if (!isAuthenticated) {
     return <Navigate to={ROUTE_PATH.LOGIN} replace />;

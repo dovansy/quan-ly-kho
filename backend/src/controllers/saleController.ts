@@ -20,7 +20,10 @@ export class SaleController {
   list = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
-    const { keyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order } = req.query as Record<string, string>;
+    const {
+      keyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order, include_items,
+    } = req.query as Record<string, string>;
+    const includeItems = include_items === 'true';
 
     const where: any = {};
     if (keyword) where[Op.or] = [
@@ -44,22 +47,39 @@ export class SaleController {
       order = [[literal("CASE WHEN returned = 1 THEN 3 WHEN payment_status = 'pending' THEN 0 WHEN payment_status = 'paid' THEN 2 ELSE 1 END"), dir]];
     }
 
+    // Mặc định list KHÔNG join stock_exports — chỉ count để hiển thị "Số sản phẩm".
+    // Khi cần xuất Excel, FE truyền include_items=true để lấy đầy đủ.
     const { count, rows } = await SaleOrder.findAndCountAll({
       where,
-      include: [{
-        model: StockExport, as: 'items',
+      attributes: {
         include: [
-          { model: Product, as: 'product' },
-          { model: Warehouse, as: 'warehouse' },
-          { model: SmallUnit, as: 'smallUnit' },
+          [literal('(SELECT COUNT(*) FROM stock_exports WHERE sale_order_id = `SaleOrder`.`id`)'), 'items_count'],
         ],
-      }],
+      },
+      include: includeItems
+        ? [{
+            model: StockExport, as: 'items',
+            include: [
+              { model: Product, as: 'product' },
+              { model: Warehouse, as: 'warehouse' },
+              { model: SmallUnit, as: 'smallUnit' },
+            ],
+          }]
+        : [],
       order,
       limit,
       offset: (page - 1) * limit,
+      distinct: includeItems,
     });
 
-    sendPaginated(res, rows.map(formatOrder), page, limit, count);
+    const formatter: (o: any) => any = includeItems ? formatOrderDetail : formatOrderSummary;
+    sendPaginated(res, rows.map(formatter), page, limit, count);
+  };
+
+  getDetail = async (req: Request, res: Response): Promise<void> => {
+    const order = await fetchOrder(Number(req.params.id));
+    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
+    sendSuccess(res, formatOrderDetail(order));
   };
 
   create = async (req: Request, res: Response): Promise<void> => {
@@ -359,6 +379,21 @@ async function fetchOrder(id: number) {
   return SaleOrder.findByPk(id, {
     include: [{
       model: StockExport, as: 'items',
+      // Lấy units_per_carton từ stock_imports (theo product+supplier+batch, ưu tiên cùng kho).
+      // Nhúng vào từng item để FE không phải tra inventory list (tránh lỗi khi lô đã hết tồn).
+      attributes: {
+        include: [
+          [literal(`(
+            SELECT units_per_carton FROM stock_imports
+            WHERE product_id = \`items\`.\`product_id\`
+              AND supplier = \`items\`.\`supplier\`
+              AND batch = \`items\`.\`batch\`
+            ORDER BY (warehouse_id = \`items\`.\`warehouse_id\`) DESC,
+                     import_date DESC, id DESC
+            LIMIT 1
+          )`), 'units_per_carton'],
+        ],
+      },
       include: [
         { model: Product, as: 'product' },
         { model: Warehouse, as: 'warehouse' },
@@ -368,8 +403,7 @@ async function fetchOrder(id: number) {
   });
 }
 
-function formatOrder(o: any) {
-  const json = o.toJSON ? o.toJSON() : o;
+function baseOrderFields(json: any) {
   return {
     id: json.id, key: String(json.id),
     invoice_code: json.invoice_code,
@@ -384,21 +418,35 @@ function formatOrder(o: any) {
     sale_date: json.sale_date,
     returned: Boolean(json.returned),
     returned_at: json.returned_at || null,
-    items: (json.items || []).map((i: any) => ({
-      id: i.id,
-      product_id: i.product_id,
-      product_name: i.product?.name || null,
-      warehouse_id: i.warehouse_id,
-      warehouse_name: i.warehouse?.name || null,
-      supplier: i.supplier,
-      batch: i.batch,
-      small_unit_id: i.small_unit_id,
-      small_unit: i.smallUnit ? { id: i.smallUnit.id, code: i.smallUnit.code, label: i.smallUnit.label } : null,
-      quantity: i.quantity,
-      unit_price: Number(i.unit_price),
-      total: Number(i.total),
-    })),
     created_at: json.created_at,
     updated_at: json.updated_at,
   };
 }
+
+function formatOrderSummary(o: any) {
+  const json = o.toJSON ? o.toJSON() : o;
+  return { ...baseOrderFields(json), items_count: Number(json.items_count) || 0 };
+}
+
+function formatOrderDetail(o: any) {
+  const json = o.toJSON ? o.toJSON() : o;
+  const items = (json.items || []).map((i: any) => ({
+    id: i.id,
+    product_id: i.product_id,
+    product_name: i.product?.name || null,
+    warehouse_id: i.warehouse_id,
+    warehouse_name: i.warehouse?.name || null,
+    supplier: i.supplier,
+    batch: i.batch,
+    small_unit_id: i.small_unit_id,
+    small_unit: i.smallUnit ? { id: i.smallUnit.id, code: i.smallUnit.code, label: i.smallUnit.label } : null,
+    quantity: Number(i.quantity) || 0,
+    unit_price: Number(i.unit_price),
+    total: Number(i.total),
+    units_per_carton: i.units_per_carton != null ? Number(i.units_per_carton) : 0,
+  }));
+  return { ...baseOrderFields(json), items, items_count: items.length };
+}
+
+// Backward-compat alias cho create/update/return/confirmShipment.
+const formatOrder = formatOrderDetail;

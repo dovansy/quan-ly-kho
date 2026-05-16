@@ -2,16 +2,14 @@ import dayjs from 'dayjs';
 import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
 import { exportToExcel } from '@/utils/exportExcel';
 import { formatCartonPiecesPlain, formatCurrency, formatDate } from '@/utils/format';
-import { findInventoryFor, SaleLine, SaleOrderRow } from './types';
+import { SaleLine, SaleOrderDetail, SaleOrderRow } from './types';
 
 const renderCurrencyCell = (v: any) => {
   if (v === '' || v === null || v === undefined) return '';
   return formatCurrency(Number(v));
 };
 
-export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) => {
-  const findUpc = (l: any) => Number(findInventoryFor(inventoryList, l)?.units_per_carton) || 0;
-
+export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
   const flat = orders.flatMap(s => {
     const saleTypeLabel = saleTypeLabels[s.sale_type]?.label || s.sale_type;
     const items = s.items.length ? s.items : [null];
@@ -29,7 +27,9 @@ export const exportSalesExcel = (orders: SaleOrderRow[], inventoryList: any[]) =
       supplier: l?.supplier || '',
       batch: l?.batch || '',
       small_unit_label: l?.small_unit_label || '',
-      quantity: l ? formatCartonPiecesPlain(l.quantity, findUpc(l), l.small_unit_label) : '',
+      quantity: l
+        ? formatCartonPiecesPlain(l.quantity, Number(l.units_per_carton) || 0, l.small_unit_label)
+        : '',
       unit_price: l?.unit_price ?? '',
       line_total: l?.total ?? '',
     }));

@@ -7,13 +7,13 @@ import { CrudModal } from '@/components/organisms/crud-modal';
 import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions } from '@/constants/options';
 import { useUpdateProduct } from '@/hooks/api/products';
+import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
 import { ProductRow } from '../types';
 
 interface Props {
   open: boolean;
   editing: ProductRow | null;
   categoryOpts: { label: string; value: string }[];
-  smallUnitOpts: { label: string; value: number }[];
   onClose: () => void;
 }
 
@@ -21,12 +21,15 @@ export const ProductFormModal = ({
   open,
   editing,
   categoryOpts,
-  smallUnitOpts,
   onClose,
 }: Props) => {
   const [form] = Form.useForm();
   const update = useUpdateProduct();
   const { success, error } = useAppNotification();
+
+  // Chỉ fetch khi mở modal — danh sách đơn vị chỉ dùng cho form này.
+  const { data: smallUnitsRes } = useGetSmallUnitOptions({ enabled: open });
+  const smallUnitOpts = smallUnitsRes?.data || [];
 
   useEffect(() => {
     if (!open || !editing) return;

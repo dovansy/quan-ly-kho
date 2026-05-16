@@ -16,6 +16,7 @@ export function SaleRoutes(): Router {
    *     description: Hóa đơn xuất hàng (sale_orders + stock_exports)
    */
   router.get('/', c.list);
+  router.get('/:id', c.getDetail);
   router.post('/', validate(createSaleSchema), c.create);
   router.put('/:id', validate(updateSaleSchema), c.update);
   router.post('/:id/return', c.returnOrder);

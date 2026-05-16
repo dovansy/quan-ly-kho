@@ -1,4 +1,5 @@
 export { useGetSales } from './useGetSales';
+export { useGetSaleDetail } from './useGetSaleDetail';
 export { useCreateSale } from './useCreateSale';
 export { useUpdateSale } from './useUpdateSale';
 export { useDeleteSale } from './useDeleteSale';
