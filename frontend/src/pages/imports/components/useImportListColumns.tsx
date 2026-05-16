@@ -54,7 +54,8 @@ export const useImportListColumns = ({ onEdit, onDelete, sortBy, sortOrder }: Pa
     title: 'Lô',
     dataIndex: 'batch',
     key: 'batch',
-    render: (t: string) => <Tag color="geekblue">{t}</Tag>,
+    align: 'center' as const,
+    render: (t: string) => <Tag color="magenta">{t}</Tag>,
   },
   {
     title: 'Số lượng',

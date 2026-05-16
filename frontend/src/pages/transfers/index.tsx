@@ -71,7 +71,7 @@ const TransfersPage = () => {
       title: 'Lô',
       dataIndex: 'batch',
       key: 'batch',
-      render: (t: string) => <Tag color="geekblue">{t}</Tag>,
+      render: (t: string) => <Tag color="magenta">{t}</Tag>,
     },
     {
       title: 'Kho nguồn',

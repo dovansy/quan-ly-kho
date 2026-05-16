@@ -250,7 +250,9 @@ const InventoryPage = () => {
       title: 'Lô',
       dataIndex: 'batch',
       key: 'batch',
-      render: (t: string) => <Tag color="geekblue">{t}</Tag>,
+      width: '150px',
+      align: 'center' as const,
+      render: (t: string) => <Tag color="magenta">{t}</Tag>,
     },
     {
       title: 'HSD',
@@ -277,7 +279,6 @@ const InventoryPage = () => {
       title: 'Hành động',
       key: 'actions',
       align: 'center' as const,
-      fixed: 'right' as const,
       width: 100,
       render: (_: any, record: any) => {
         const avail = Number(record.available_pieces ?? record.stock_pieces) || 0;

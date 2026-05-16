@@ -19,14 +19,8 @@ interface Props {
 }
 
 export const SaleDetailModal = ({ open, viewing, onClose }: Props) => {
-  const { data: detailRes, isLoading } = useGetSaleDetail(
-    viewing?.id ?? null,
-    open && !!viewing
-  );
-  const detailItems = useMemo(
-    () => mapSaleItems(detailRes?.data?.items),
-    [detailRes]
-  );
+  const { data: detailRes, isLoading } = useGetSaleDetail(viewing?.id ?? null, open && !!viewing);
+  const detailItems = useMemo(() => mapSaleItems(detailRes?.data?.items), [detailRes]);
 
   const enrichedItems = useMemo(() => {
     return detailItems.map(it => {
@@ -89,13 +83,15 @@ export const SaleDetailModal = ({ open, viewing, onClose }: Props) => {
                 <Tag color="warning">
                   Đã hoàn hàng{viewing.returned_at ? ` (${formatDate(viewing.returned_at)})` : ''}
                 </Tag>
-              ) : (() => {
-                const info = paymentStatusLabels[viewing.payment_status] || {
-                  label: viewing.paid ? 'Đã thanh toán' : 'Chưa thanh toán',
-                  color: viewing.paid ? 'success' : 'error',
-                };
-                return <Tag color={info.color}>{info.label}</Tag>;
-              })()}
+              ) : (
+                (() => {
+                  const info = paymentStatusLabels[viewing.payment_status] || {
+                    label: viewing.paid ? 'Đã thanh toán' : 'Chưa thanh toán',
+                    color: viewing.paid ? 'success' : 'error',
+                  };
+                  return <Tag color={info.color}>{info.label}</Tag>;
+                })()
+              )}
             </Descriptions.Item>
             {viewing.sale_type === SaleType.BROKER && (
               <Descriptions.Item label="Nhà môi giới" span={3}>
