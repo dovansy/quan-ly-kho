@@ -151,10 +151,7 @@ export class SaleController {
 
     const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
-    if (order.returned) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Không thể chỉnh sửa hóa đơn đã hoàn hàng', 400);
-      return;
-    }
+    const wasReturned = order.returned;
 
     if (!Array.isArray(items) || items.length === 0) {
       sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
@@ -184,6 +181,7 @@ export class SaleController {
           paid: status === 'paid',
           payment_status: status,
           sale_date: saleDate,
+          ...(wasReturned ? { returned: false, returned_at: null, items_snapshot: null } : {}),
         }, { transaction: t });
 
         await StockExport.bulkCreate(
@@ -286,16 +284,23 @@ export class SaleController {
   };
 
   returnOrder = async (req: Request, res: Response): Promise<void> => {
-    const order = await SaleOrder.findByPk(req.params.id);
+    const order = await fetchOrder(Number(req.params.id));
     if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
     if (order.returned) {
       sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Hóa đơn đã được hoàn hàng', 400); return;
     }
 
+    const detail = formatOrderDetail(order);
+    const snapshot = detail.items;
+
     await sequelize.transaction(async (t) => {
+      // Snapshot lại items để FE còn xem được khi đơn đã hoàn (stock_exports sẽ bị destroy).
+      await order.update(
+        { items_snapshot: snapshot, returned: true, returned_at: new Date() },
+        { transaction: t },
+      );
       // Xóa stock_exports thủ công để trigger trg_se_after_delete cộng trả tồn.
       await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
-      await order.update({ returned: true, returned_at: new Date() }, { transaction: t });
     });
 
     const refreshed = await fetchOrder(order.id);
@@ -339,7 +344,13 @@ async function assertStockAvailable(items: ExportPayload[], t: Transaction): Pro
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-    const raw = balance?.stock_pieces || 0;
+    if (!balance) {
+      throw new BusinessError(
+        ErrorCode.EMPTY, 400,
+        `Lô "${batch}" (NCC ${supplier}) không tồn tại trong kho. Có thể thông tin lô nhập đã bị thay đổi — vui lòng mở đơn và cập nhật lại sản phẩm/lô trước khi xác nhận xuất.`,
+      );
+    }
+    const raw = balance.stock_pieces || 0;
     const pendingSum = (await StockExport.sum('quantity', {
       where: {
         is_pending: true,
@@ -353,7 +364,7 @@ async function assertStockAvailable(items: ExportPayload[], t: Transaction): Pro
     if (available < needed) {
       throw new BusinessError(
         ErrorCode.EMPTY, 400,
-        `Tồn không đủ cho lô "${batch}" (NCC ${supplier}): khả dụng ${available} (tồn ${raw} - đang chờ xuất ${pendingSum}), cần ${needed}`,
+        `Tồn không đủ cho lô "${batch}" (NCC ${supplier}): khả dụng ${available} (tồn ${raw} - đang chờ xuất ${pendingSum}), cần ${needed}. Vui lòng nhập thêm hàng hoặc giảm số lượng xuất.`,
       );
     }
   }
@@ -430,7 +441,7 @@ function formatOrderSummary(o: any) {
 
 function formatOrderDetail(o: any) {
   const json = o.toJSON ? o.toJSON() : o;
-  const items = (json.items || []).map((i: any) => ({
+  const liveItems = (json.items || []).map((i: any) => ({
     id: i.id,
     product_id: i.product_id,
     product_name: i.product?.name || null,
@@ -445,6 +456,13 @@ function formatOrderDetail(o: any) {
     total: Number(i.total),
     units_per_carton: i.units_per_carton != null ? Number(i.units_per_carton) : 0,
   }));
+
+  // Đơn đã hoàn hàng: stock_exports đã bị destroy, đọc từ snapshot để FE vẫn xem/sửa được.
+  const items =
+    liveItems.length === 0 && json.returned && Array.isArray(json.items_snapshot)
+      ? json.items_snapshot
+      : liveItems;
+
   return { ...baseOrderFields(json), items, items_count: items.length };
 }
 

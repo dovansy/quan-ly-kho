@@ -60,7 +60,7 @@ export const SaleDetailModal = ({ open, viewing, onClose }: Props) => {
             size="small"
             column={{ xs: 1, sm: 2, md: 3 }}
             className="mb-4"
-            labelStyle={{ fontWeight: 600, width: 140 }}
+            styles={{ label: { fontWeight: 600, width: 140 } }}
           >
             <Descriptions.Item
               label={viewing.sale_type === SaleType.WHOLESALE ? 'Đơn hàng' : 'Khách hàng'}

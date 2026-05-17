@@ -1,4 +1,5 @@
 export interface SaleLine {
+  _clientId: string;
   id?: number;
   inventory_id?: number;
   product_id: number;
@@ -60,6 +61,7 @@ export const mapSale = (s: any): SaleOrderRow => ({
 
 export const mapSaleItems = (items: any[] = []): SaleLine[] =>
   items.map((i: any) => ({
+    _clientId: genClientId(),
     id: i.id,
     product_id: i.product_id,
     product_name: i.product_name,
@@ -83,7 +85,13 @@ export const mapSaleDetail = (s: any): SaleOrderDetail => ({
   items: mapSaleItems(s.items),
 });
 
+const genClientId = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 export const createEmptyLine = (): SaleLine => ({
+  _clientId: genClientId(),
   product_id: 0,
   product_name: '',
   warehouse_id: 0,

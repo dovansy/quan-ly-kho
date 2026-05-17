@@ -1,4 +1,4 @@
-import { Col, Form, Row, Spin } from 'antd';
+import { Alert, Col, Form, Row, Spin } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
 import { FiPlus } from 'react-icons/fi';
@@ -160,10 +160,12 @@ export const SaleFormModal = ({
       setLines(enriched);
     } else {
       form.resetFields();
+      const initialSaleType = defaultSaleType || SaleType.RETAIL;
       form.setFieldsValue({
         saleDate: dayjs(),
-        saleType: defaultSaleType || SaleType.RETAIL,
-        paymentStatus: PaymentStatus.UNPAID,
+        saleType: initialSaleType,
+        paymentStatus:
+          initialSaleType === SaleType.WHOLESALE ? PaymentStatus.PENDING : PaymentStatus.UNPAID,
       });
       setLines([]);
     }
@@ -333,6 +335,15 @@ export const SaleFormModal = ({
     >
       <Spin spinning={!!editing && (detailQuery.isLoading || editInvQuery.isLoading)}>
         <Form form={form} layout="vertical" className="pt-4" autoComplete="off">
+          {editing?.returned && (
+            <Alert
+              type="info"
+              showIcon
+              className="mb-4"
+              message="Đơn hàng này đang ở trạng thái đã hoàn hàng"
+              description="Lưu thay đổi sẽ tái xuất hàng theo danh sách sản phẩm bên dưới và khôi phục đơn về trạng thái bình thường. Tồn kho sẽ được trừ lại theo các lô bạn chọn."
+            />
+          )}
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={8}>
               <Form.Item
@@ -413,7 +424,7 @@ export const SaleFormModal = ({
             );
             return (
               <SaleLineRow
-                key={idx}
+                key={line._clientId}
                 idx={idx}
                 isFirst={idx === 0}
                 line={line}

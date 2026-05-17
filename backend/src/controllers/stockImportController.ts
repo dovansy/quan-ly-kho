@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import sequelize from '../models/index';
-import { StockImport, Product, Warehouse, SmallUnit, User } from '../models';
+import { StockImport, Product, Warehouse, SmallUnit, User, StockExport } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
 
@@ -38,6 +38,16 @@ export class StockImportController {
 
     const { count, rows } = await StockImport.findAndCountAll({
       where,
+      attributes: {
+        include: [
+          [
+            literal(
+              `(SELECT COUNT(*) FROM stock_exports se WHERE se.is_pending = 0 AND se.product_id = StockImport.product_id AND se.warehouse_id = StockImport.warehouse_id AND se.supplier = StockImport.supplier AND se.batch = StockImport.batch)`
+            ),
+            'sold_count',
+          ],
+        ],
+      },
       include: [
         { model: Product, as: 'product', where: Object.keys(productWhere).length ? productWhere : undefined,
           include: [{ model: SmallUnit, as: 'defaultSmallUnit' }] },
@@ -121,17 +131,72 @@ export class StockImportController {
     if (!row) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy bản ghi nhập', 404); return; }
 
     const {
-      category,
+      product_name, category,
       warehouse_id, supplier, batch, small_unit_id,
       carton_quantity, units_per_carton, piece_quantity,
       expiry_date, import_date, note,
       input_mode, input_total_pieces, units_per_box,
     } = req.body;
 
+    const currentProduct = await Product.findByPk(row.product_id);
+    const oldKey = {
+      product_id: row.product_id,
+      warehouse_id: row.warehouse_id,
+      supplier: row.supplier,
+      batch: row.batch,
+    };
+    const wantsProductChange =
+      product_name !== undefined && product_name !== (currentProduct?.name || null);
+
+    const wantsKeyChange =
+      wantsProductChange ||
+      (warehouse_id !== undefined && Number(warehouse_id) !== row.warehouse_id) ||
+      (supplier !== undefined && supplier !== row.supplier) ||
+      (batch !== undefined && batch !== row.batch);
+
+    if (wantsKeyChange) {
+      const soldCount = await StockExport.count({
+        where: {
+          is_pending: false,
+          product_id: row.product_id,
+          warehouse_id: row.warehouse_id,
+          supplier: row.supplier,
+          batch: row.batch,
+        },
+      });
+      if (soldCount > 0) {
+        sendError(
+          res,
+          ErrorCode.EMPTY,
+          'Không thể đổi Sản phẩm / Kho / NCC / Lô của bản ghi nhập này vì đã có hàng được bán ra. Vui lòng tạo phiếu điều chỉnh thay vì sửa trực tiếp.',
+          400
+        );
+        return;
+      }
+    }
+
     try {
       await sequelize.transaction(async (t) => {
+        let nextProductId = row.product_id;
+
+        if (wantsProductChange) {
+          // Re-point import sang product khác (hoặc tạo mới nếu chưa tồn tại).
+          const [newProduct] = await Product.findOrCreate({
+            where: { name: product_name },
+            defaults: {
+              name: product_name,
+              category: category ?? currentProduct?.category ?? null,
+              supplier: supplier ?? currentProduct?.supplier ?? null,
+              default_small_unit_id: small_unit_id ?? row.small_unit_id,
+              status: 'active',
+            },
+            transaction: t,
+          });
+          nextProductId = newProduct.id;
+        }
+
         if (category !== undefined) {
-          const product = await Product.findByPk(row.product_id, { transaction: t });
+          const product = await Product.findByPk(nextProductId, { transaction: t });
           if (product) {
             const next = category || null;
             if ((product.category ?? null) !== next) {
@@ -141,6 +206,7 @@ export class StockImportController {
         }
 
         await row.update({
+          product_id: nextProductId,
           warehouse_id: warehouse_id ?? row.warehouse_id,
           supplier: supplier ?? row.supplier,
           batch: batch ?? row.batch,
@@ -172,8 +238,23 @@ export class StockImportController {
       throw err;
     }
 
+    let warning: string | null = null;
+    if (wantsKeyChange) {
+      const pendingForOldKey = await StockExport.count({
+        where: { ...oldKey, is_pending: true },
+      });
+      if (pendingForOldKey > 0) {
+        warning =
+          `Lưu ý: còn ${pendingForOldKey} dòng xuất ở trạng thái Chờ xuất hàng đang trỏ tới Kho/NCC/Lô CŨ. Hãy mở các đơn pending đó và cập nhật sang thông tin mới trước khi xác nhận xuất, nếu không sẽ bị lỗi tồn kho.`;
+      }
+    }
+
     const refreshed = await fetchOne(Number(id));
-    sendSuccess(res, format(refreshed!), 'Cập nhật bản ghi nhập thành công');
+    sendSuccess(
+      res,
+      { ...format(refreshed!), warning },
+      warning || 'Cập nhật bản ghi nhập thành công',
+    );
   };
 
   remove = async (req: Request, res: Response): Promise<void> => {
@@ -193,6 +274,16 @@ export class StockImportController {
 
 async function fetchOne(id: number) {
   return StockImport.findByPk(id, {
+    attributes: {
+      include: [
+        [
+          literal(
+            `(SELECT COUNT(*) FROM stock_exports se WHERE se.is_pending = 0 AND se.product_id = StockImport.product_id AND se.warehouse_id = StockImport.warehouse_id AND se.supplier = StockImport.supplier AND se.batch = StockImport.batch)`
+          ),
+          'sold_count',
+        ],
+      ],
+    },
     include: [
       { model: Product, as: 'product', include: [{ model: SmallUnit, as: 'defaultSmallUnit' }] },
       { model: Warehouse, as: 'warehouse' },
@@ -227,6 +318,7 @@ function format(row: any) {
     note: json.note,
     input_total_pieces: json.input_total_pieces ?? null,
     units_per_box: json.units_per_box ?? null,
+    has_sales: Number(json.sold_count || 0) > 0,
     created_at: json.created_at,
     updated_at: json.updated_at,
   };

@@ -270,8 +270,17 @@ export const ImportFormModal = ({
         update.mutate(
           { id: editing.id, data: payload },
           {
-            onSuccess: () => {
-              success({ message: 'Cập nhật bản ghi nhập thành công' });
+            onSuccess: (res: any) => {
+              const w = res?.data?.data?.warning;
+              if (w) {
+                warning({
+                  message: 'Cập nhật thành công nhưng cần lưu ý',
+                  description: w,
+                  duration: 8,
+                });
+              } else {
+                success({ message: 'Cập nhật bản ghi nhập thành công' });
+              }
               close();
             },
             onError: (e: any) =>

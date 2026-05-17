@@ -15,6 +15,7 @@ interface SaleOrderAttributes {
   sale_date: Date;
   returned: boolean;
   returned_at: Date | null;
+  items_snapshot: any | null;
   created_by_user_id: number | null;
 }
 
@@ -30,6 +31,7 @@ type SaleOrderCreation = Optional<
   | 'payment_status'
   | 'returned'
   | 'returned_at'
+  | 'items_snapshot'
   | 'created_by_user_id'
 >;
 
@@ -47,6 +49,7 @@ export class SaleOrder extends Model<SaleOrderAttributes, SaleOrderCreation> {
   declare sale_date: Date;
   declare returned: boolean;
   declare returned_at: Date | null;
+  declare items_snapshot: any | null;
   declare created_by_user_id: number | null;
   declare readonly created_at: Date;
   declare readonly updated_at: Date;
@@ -73,6 +76,7 @@ SaleOrder.init(
     sale_date: { type: DataTypes.DATEONLY, allowNull: false },
     returned: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     returned_at: { type: DataTypes.DATE, allowNull: true },
+    items_snapshot: { type: DataTypes.JSON, allowNull: true },
     created_by_user_id: { type: DataTypes.INTEGER, allowNull: true, references: { model: 'users', key: 'id' } },
   },
   { sequelize, tableName: 'sale_orders' },

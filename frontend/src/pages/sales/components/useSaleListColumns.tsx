@@ -135,7 +135,6 @@ export const useSaleListColumns = ({
         <ActionColumn
           onView={() => onView(r)}
           onEdit={() => onEdit(r)}
-          editDisabled={r.returned}
           onReturn={r.returned || r.payment_status === 'pending' ? undefined : () => onReturn(r)}
           onDelete={() => onDelete(r)}
           deleteTitle="Xóa hóa đơn"

@@ -18,4 +18,5 @@ export interface ImportRecord {
   import_date: string;
   input_total_pieces?: number | null;
   units_per_box?: number | null;
+  has_sales?: boolean;
 }
