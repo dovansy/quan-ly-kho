@@ -47,14 +47,6 @@ export const ImportFormModal = ({
 
   const [inputMode, setInputMode] = useState<'kien' | 'vien'>('kien');
 
-  const QUANTITY_FIELDS = [
-    'carton_quantity',
-    'units_per_carton',
-    'piece_quantity',
-    'total_pieces_input',
-    'units_per_box',
-  ] as const;
-
   const cartonQty = Number(Form.useWatch('carton_quantity', form)) || 0;
   const unitsPer = Number(Form.useWatch('units_per_carton', form)) || 0;
   const pieceQty = Number(Form.useWatch('piece_quantity', form)) || 0;
@@ -212,6 +204,17 @@ export const ImportFormModal = ({
   const close = () => {
     form.resetFields();
     onClose();
+  };
+
+  const onInputModeChange = (val: string | number) => {
+    setInputMode(val as 'kien' | 'vien');
+    form.setFieldsValue({
+      carton_quantity: undefined,
+      units_per_carton: undefined,
+      piece_quantity: undefined,
+      total_pieces_input: undefined,
+      units_per_box: undefined,
+    });
   };
 
   const onSubmit = () => {
@@ -416,6 +419,20 @@ export const ImportFormModal = ({
                       parts.push(
                         `${formatNumber(pieceQty)} ${(smallUnitLabel || 'lẻ').toLowerCase()}`
                       );
+
+                    if (unitsPer > 0) {
+                      const totalKien = Math.floor(totalPieces / unitsPer);
+                      const loosePieces = totalPieces - totalKien * unitsPer;
+                      const totalParts: string[] = [];
+                      if (totalKien > 0) totalParts.push(`${formatNumber(totalKien)} kiện`);
+                      if (loosePieces > 0)
+                        totalParts.push(
+                          `${formatNumber(loosePieces)} ${(smallUnitLabel || 'lẻ').toLowerCase()}`
+                        );
+
+                      return `Số lượng nhập (${parts.join(', ')} = tổng ${totalParts.join(' + ')})`;
+                    }
+
                     return `Số lượng nhập (${parts.join(', ')} = tổng ${formatNumber(totalPieces)} ${smallUnitLabel})`;
                   }
                   const looseVien = unitsPerBox > 0 ? totalPieces % unitsPerBox : 0;
@@ -443,10 +460,7 @@ export const ImportFormModal = ({
             className="import-mode-segmented"
             value={inputMode}
             disabled={!!matchedImport}
-            onChange={val => {
-              setInputMode(val as 'kien' | 'vien');
-              form.resetFields([...QUANTITY_FIELDS]);
-            }}
+            onChange={onInputModeChange}
             options={[
               { label: 'Nhập kiện', value: 'kien' },
               { label: 'Nhập viên', value: 'vien' },
@@ -463,7 +477,7 @@ export const ImportFormModal = ({
             <Col xs={24} sm={8}>
               <Form.Item
                 name="units_per_carton"
-                label={`Số ${smallUnitLabel || 'Lẻ'} / kiện`}
+                label={`Số ${smallUnitLabel || 'Lẻ'} / kiện (Quy cách)`}
                 rules={[
                   { required: true, message: 'Nhập số ' + (smallUnitLabel || 'Lẻ') + ' / kiện' },
                 ]}
@@ -472,7 +486,7 @@ export const ImportFormModal = ({
                   placeholder="1"
                   decimalScale={0}
                   className="w-full"
-                  disabled={lockUpc || !!editing}
+                  disabled={lockUpc}
                 />
               </Form.Item>
             </Col>
@@ -496,28 +510,28 @@ export const ImportFormModal = ({
             <Col xs={24} sm={8}>
               <Form.Item
                 name="units_per_box"
-                label={`Số viên / ${boxLabel}`}
+                label={`Số viên / ${boxLabel} (Quy cách)`}
                 rules={[{ required: true, message: `Nhập số viên / ${boxLabel}` }]}
               >
                 <AppInputNumber
                   placeholder="0"
                   decimalScale={0}
                   className="w-full"
-                  disabled={lockVienBox || !!editing}
+                  disabled={lockVienBox}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
               <Form.Item
                 name="units_per_carton"
-                label={`Số ${boxLabel} / kiện`}
+                label={`Số ${boxLabel} / kiện (Quy cách)`}
                 rules={[{ required: true, message: `Nhập số ${boxLabel} / kiện` }]}
               >
                 <AppInputNumber
                   placeholder="0"
                   decimalScale={0}
                   className="w-full"
-                  disabled={lockUpc || !!editing}
+                  disabled={lockUpc}
                 />
               </Form.Item>
             </Col>
