@@ -21,6 +21,9 @@ export interface StockImport {
   imported_by: string | null;
   import_date: string;
   note: string | null;
+  input_total_pieces?: number | null;
+  units_per_box?: number | null;
+  has_sales?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +41,9 @@ export interface CreateStockImportRequest {
   expiry_date: string;
   import_date?: string;
   note?: string;
+  input_mode?: 'kien' | 'vien';
+  input_total_pieces?: number | null;
+  units_per_box?: number | null;
 }
 
 export interface StockImportFilters {

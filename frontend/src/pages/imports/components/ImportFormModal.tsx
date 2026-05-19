@@ -225,13 +225,6 @@ export const ImportFormModal = ({
         const vienPerHop = Number(values.units_per_box || 0);
         const hopPerKien = Number(values.units_per_carton || 0);
         const totalHop = vienPerHop > 0 ? Math.floor(totalVien / vienPerHop) : 0;
-        if (hopPerKien > 0 && totalHop > 0 && hopPerKien > totalHop) {
-          warning({
-            message: 'Số hộp / kiện vượt quá số lượng thực tế',
-            description: `Tổng chỉ có ${totalHop} ${boxLabel} (= ${totalVien} viên / ${vienPerHop} viên/${boxLabel}), không thể đặt ${hopPerKien} ${boxLabel}/kiện.`,
-          });
-          return;
-        }
         units_per_carton = hopPerKien > 0 ? hopPerKien : 1;
         if (units_per_carton > 1) {
           carton_quantity = Math.floor(totalHop / units_per_carton);
