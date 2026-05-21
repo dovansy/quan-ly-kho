@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op, fn, col, literal } from 'sequelize';
 import sequelize from '../models/index';
-import { InventoryBalance, InventoryTransfer, Product, Warehouse, SmallUnit, StockExport, User } from '../models';
+import { InventoryBalance, InventoryTransfer, Product, Warehouse, SmallUnit, StockExport, StockImport, User } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
 
@@ -212,6 +212,54 @@ export class InventoryController {
         })) || 0;
         const availableForTransfer = source.stock_pieces - pendingSum;
         if (availableForTransfer < qty) throw new Error('INSUFFICIENT_STOCK');
+
+        const key = {
+          product_id: Number(product_id),
+          warehouse_id: Number(warehouse_id_from),
+          supplier,
+          batch,
+        };
+        const exportCount = await StockExport.count({ where: key, transaction: t });
+        const imports = await StockImport.findAll({
+          where: key,
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+        });
+        const importedTotal = imports.reduce(
+          (sum, row) =>
+            sum + (Number(row.carton_quantity) || 0) * (Number(row.units_per_carton) || 1) +
+            (Number(row.piece_quantity) || 0),
+          0
+        );
+        const canMoveImportRows =
+          exportCount === 0 &&
+          pendingSum === 0 &&
+          importedTotal === qty &&
+          source.stock_pieces === qty;
+
+        if (canMoveImportRows) {
+          // Full transfer of an untouched import key is a warehouse correction.
+          // Updating stock_imports keeps the Imports screen and balance triggers in sync.
+          await StockImport.update(
+            { warehouse_id: Number(warehouse_id_to) },
+            { where: key, transaction: t }
+          );
+
+          await InventoryTransfer.create(
+            {
+              product_id: Number(product_id),
+              warehouse_id_from: Number(warehouse_id_from),
+              warehouse_id_to: Number(warehouse_id_to),
+              supplier, batch,
+              quantity: qty,
+              transferred_by_user_id: userId,
+              transfer_date: new Date(),
+              note: note || null,
+            },
+            { transaction: t }
+          );
+          return;
+        }
 
         await source.update(
           { stock_pieces: source.stock_pieces - qty },

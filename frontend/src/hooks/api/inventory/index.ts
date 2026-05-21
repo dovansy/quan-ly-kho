@@ -38,6 +38,7 @@ export function useTransferInventory() {
     mutationFn: (data: TransferInventoryRequest) => inventoryService.transfer(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: INVENTORY_QUERY_KEY.all });
+      qc.invalidateQueries({ queryKey: ['imports'] });
     },
   });
 }
