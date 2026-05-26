@@ -8,7 +8,10 @@ import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels } from '@/constants/options';
 import { Status } from '@/constants/enums';
 import {
-  useGetSmallUnits, useCreateSmallUnit, useUpdateSmallUnit, useDeleteSmallUnit,
+  useGetSmallUnits,
+  useCreateSmallUnit,
+  useUpdateSmallUnit,
+  useDeleteSmallUnit,
 } from '@/hooks/api/small-units';
 import { getErrorMessage } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
@@ -40,7 +43,10 @@ const SmallUnitsPage = () => {
   const loading = isLoading || create.isPending || update.isPending || remove.isPending;
 
   const onSearch = (v: any) => setFilters({ keyword: v.keyword, status: v.status });
-  const onClear = () => { filterForm.resetFields(); setFilters({}); };
+  const onClear = () => {
+    filterForm.resetFields();
+    setFilters({});
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -55,7 +61,11 @@ const SmallUnitsPage = () => {
     setModalOpen(true);
   };
 
-  const closeModal = () => { setModalOpen(false); setEditing(null); modalForm.resetFields(); };
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditing(null);
+    modalForm.resetFields();
+  };
 
   const onSubmit = () => {
     modalForm.validateFields().then(values => {
@@ -90,28 +100,46 @@ const SmallUnitsPage = () => {
   const onDelete = (r: SmallUnitRow) => {
     remove.mutate(r.id, {
       onSuccess: () => success({ message: 'Xóa đơn vị thành công' }),
-      onError: (e: any) =>
-        error({ message: 'Lỗi xóa', description: getErrorMessage(e) }),
+      onError: (e: any) => error({ message: 'Lỗi xóa', description: getErrorMessage(e) }),
     });
   };
 
   const columns = [
     sttColumn,
-    { title: 'Code', dataIndex: 'code', key: 'code',
-      render: (t: string) => <Tag color="blue">{t}</Tag> },
-    { title: 'Nhãn hiển thị', dataIndex: 'label', key: 'label',
-      render: (t: string) => <span className="font-bold">{t}</span> },
-    { title: 'Trạng thái', dataIndex: 'status', key: 'status', align: 'center' as const,
+    {
+      title: 'Code',
+      dataIndex: 'code',
+      key: 'code',
+      render: (t: string) => <Tag color="blue">{t}</Tag>,
+    },
+    {
+      title: 'Nhãn hiển thị',
+      dataIndex: 'label',
+      key: 'label',
+      render: (t: string) => <span className="font-bold">{t}</span>,
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      align: 'center' as const,
       render: (s: string) => {
         const info = statusLabels[s] || { label: s, color: 'default' };
         return <Tag color={info.color}>{info.label}</Tag>;
       },
     },
     {
-      title: 'Hành động', key: 'actions', align: 'center' as const, width: 150,
+      title: 'Hành động',
+      key: 'actions',
+      align: 'center' as const,
+      width: 150,
       render: (_: any, r: SmallUnitRow) => (
-        <ActionColumn onEdit={() => openEdit(r)} onDelete={() => onDelete(r)}
-          deleteTitle="Xóa đơn vị" deleteDescription={`Xóa đơn vị "${r.label}"?`} />
+        <ActionColumn
+          onEdit={() => openEdit(r)}
+          onDelete={() => onDelete(r)}
+          deleteTitle="Xóa đơn vị"
+          deleteDescription={`Xóa đơn vị "${r.label}"?`}
+        />
       ),
     },
   ];
@@ -122,7 +150,7 @@ const SmallUnitsPage = () => {
         <Form.Item name="keyword" label="Tìm kiếm" className="flex-1 mb-0">
           <AppInput placeholder="Code hoặc nhãn..." prefix={<FiSearch />} />
         </Form.Item>
-        <Form.Item name="status" label="Trạng thái" className="w-[200px] mb-0">
+        <Form.Item name="status" label="Trạng thái" className="flex-1 mb-0">
           <AppSelect allowClear placeholder="Chọn trạng thái" options={statusOptions} />
         </Form.Item>
       </FilterSection>
@@ -148,14 +176,20 @@ const SmallUnitsPage = () => {
         <Form form={modalForm} layout="vertical" className="pt-4" autoComplete="off">
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={12}>
-              <Form.Item name="code" label="Code"
-                rules={[{ required: true, message: 'Nhập code' }]}>
+              <Form.Item
+                name="code"
+                label="Code"
+                rules={[{ required: true, message: 'Nhập code' }]}
+              >
                 <AppInput placeholder="vd: hop, goi, tui" disabled={!!editing} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
-              <Form.Item name="label" label="Nhãn hiển thị"
-                rules={[{ required: true, message: 'Nhập nhãn' }]}>
+              <Form.Item
+                name="label"
+                label="Nhãn hiển thị"
+                rules={[{ required: true, message: 'Nhập nhãn' }]}
+              >
                 <AppInput placeholder="vd: Hộp, Gói, Túi" />
               </Form.Item>
             </Col>
@@ -163,8 +197,7 @@ const SmallUnitsPage = () => {
           {editing && (
             <Row gutter={[16, 0]}>
               <Col xs={24} sm={12}>
-                <Form.Item name="status" label="Trạng thái"
-                  rules={[{ required: true }]}>
+                <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
                   <AppSelect placeholder="Chọn trạng thái" options={statusOptions} />
                 </Form.Item>
               </Col>

@@ -34,7 +34,7 @@ export const ImportFilterForm = ({
         }
       />
     </Form.Item>
-    <Form.Item name="warehouse_id" label="Kho" className="w-[200px] mb-0">
+    <Form.Item name="warehouse_id" label="Kho" className="flex-1 mb-0">
       <AppSelect
         allowClear
         showSearch
@@ -43,7 +43,7 @@ export const ImportFilterForm = ({
         filterOption={(i, o) => (o?.label ?? '').toString().toLowerCase().includes(i.toLowerCase())}
       />
     </Form.Item>
-    <Form.Item name="batch" label="Lô" className="w-[180px] mb-0">
+    <Form.Item name="batch" label="Lô" className="flex-1 mb-0">
       <AppSelect
         allowClear
         showSearch
@@ -52,7 +52,7 @@ export const ImportFilterForm = ({
         filterOption={(i, o) => (o?.label ?? '').toString().toLowerCase().includes(i.toLowerCase())}
       />
     </Form.Item>
-    <Form.Item name="importDate" label="Ngày nhập" className="w-[180px] mb-0">
+    <Form.Item name="importDate" label="Ngày nhập" className="flex-1 mb-0">
       <AppDatePicker
         allowClear
         placeholder="Chọn ngày"

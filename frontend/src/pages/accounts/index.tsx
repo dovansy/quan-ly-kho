@@ -7,7 +7,12 @@ import { TableSection } from '@/components/organisms/table-section';
 import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions, statusLabels, roleLabels, roleOptions } from '@/constants/options';
 import { Status } from '@/constants/enums';
-import { useGetAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/api/accounts';
+import {
+  useGetAccounts,
+  useCreateAccount,
+  useUpdateAccount,
+  useDeleteAccount,
+} from '@/hooks/api/accounts';
 import { useAppSelector } from '@/shared/redux/hooks';
 import { getErrorMessage } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
@@ -44,14 +49,16 @@ const AccountsPage = () => {
   const { success, error } = useAppNotification();
 
   const dataSource: Account[] = useMemo(
-    () => (accountsRes?.data || []).map((item: any) => ({
-      ...item,
-      key: item.key || String(item.id),
-    })),
-    [accountsRes?.data],
+    () =>
+      (accountsRes?.data || []).map((item: any) => ({
+        ...item,
+        key: item.key || String(item.id),
+      })),
+    [accountsRes?.data]
   );
 
-  const loading = isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const loading =
+    isLoading || createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const canDeleteRow = (row: Account): boolean => {
     if (row.id === currentUser?.id) return false;
@@ -182,20 +189,18 @@ const AccountsPage = () => {
       width: 150,
       render: (_: any, record: Account) => {
         const canDelete = canDeleteRow(record);
-        const deleteTooltip = record.id === currentUser?.id
-          ? 'Không thể xóa chính mình'
-          : !isSuperAdmin && record.role === 'admin'
-            ? 'Chỉ super admin mới xóa được admin'
-            : undefined;
+        const deleteTooltip =
+          record.id === currentUser?.id
+            ? 'Không thể xóa chính mình'
+            : !isSuperAdmin && record.role === 'admin'
+              ? 'Chỉ super admin mới xóa được admin'
+              : undefined;
 
         if (!canDelete && deleteTooltip) {
           return (
             <Tooltip title={deleteTooltip}>
               <span>
-                <ActionColumn
-                  onEdit={() => openEditModal(record)}
-                  showDelete={false}
-                />
+                <ActionColumn onEdit={() => openEditModal(record)} showDelete={false} />
               </span>
             </Tooltip>
           );
@@ -225,7 +230,7 @@ const AccountsPage = () => {
         <Form.Item name="keyword" label="Tìm kiếm theo tên" className="flex-1 mb-0">
           <AppInput placeholder="Nhập tên hoặc username..." prefix={<FiSearch />} />
         </Form.Item>
-        <Form.Item name="status" label="Trạng thái" className="w-[200px] mb-0">
+        <Form.Item name="status" label="Trạng thái" className="flex-1 mb-0">
           <AppSelect allowClear placeholder="Chọn trạng thái" options={statusOptions} />
         </Form.Item>
       </FilterSection>
@@ -332,10 +337,7 @@ const AccountsPage = () => {
                     noSpaceRule,
                   ]}
                 >
-                  <AppPasswordInput
-                    placeholder="Nhập mật khẩu"
-                    autoComplete="new-password"
-                  />
+                  <AppPasswordInput placeholder="Nhập mật khẩu" autoComplete="new-password" />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
@@ -354,10 +356,7 @@ const AccountsPage = () => {
                     }),
                   ]}
                 >
-                  <AppPasswordInput
-                    placeholder="Nhập lại mật khẩu"
-                    autoComplete="new-password"
-                  />
+                  <AppPasswordInput placeholder="Nhập lại mật khẩu" autoComplete="new-password" />
                 </Form.Item>
               </Col>
             </Row>

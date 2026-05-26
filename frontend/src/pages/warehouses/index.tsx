@@ -110,8 +110,7 @@ const WarehousesPage = () => {
   const handleDelete = (record: Warehouse) => {
     deleteMutation.mutate(record.id, {
       onSuccess: () => success({ message: 'Xóa kho thành công' }),
-      onError: (e: any) =>
-        error({ message: 'Xóa kho thất bại', description: getErrorMessage(e) }),
+      onError: (e: any) => error({ message: 'Xóa kho thất bại', description: getErrorMessage(e) }),
     });
   };
 
@@ -170,7 +169,7 @@ const WarehousesPage = () => {
         <Form.Item name="keyword" label="Tìm kiếm theo tên kho" className="flex-1 mb-0">
           <AppInput placeholder="Nhập tên kho hoặc địa chỉ..." prefix={<FiSearch />} />
         </Form.Item>
-        <Form.Item name="status" label="Trạng thái" className="w-[200px] mb-0">
+        <Form.Item name="status" label="Trạng thái" className="flex-1 mb-0">
           <AppSelect allowClear placeholder="Chọn trạng thái" options={statusOptions} />
         </Form.Item>
       </FilterSection>

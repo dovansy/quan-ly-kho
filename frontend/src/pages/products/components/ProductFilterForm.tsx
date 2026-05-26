@@ -13,7 +13,14 @@ interface Props {
   onClear: () => void;
 }
 
-export const ProductFilterForm = ({ form, loading, categoryOpts, productNameOpts, onSearch, onClear }: Props) => (
+export const ProductFilterForm = ({
+  form,
+  loading,
+  categoryOpts,
+  productNameOpts,
+  onSearch,
+  onClear,
+}: Props) => (
   <FilterSection form={form} onSearch={onSearch} onClear={onClear} loading={loading}>
     <Form.Item name="keyword" label="Tìm kiếm" className="flex-1 mb-0">
       <AppAutoComplete
@@ -24,7 +31,7 @@ export const ProductFilterForm = ({ form, loading, categoryOpts, productNameOpts
         }
       />
     </Form.Item>
-    <Form.Item name="category" label="Loại" className="w-[200px] mb-0">
+    <Form.Item name="category" label="Loại" className="flex-1 mb-0">
       <AppSelect
         allowClear
         showSearch
@@ -33,7 +40,7 @@ export const ProductFilterForm = ({ form, loading, categoryOpts, productNameOpts
         filterOption={(i, o) => (o?.label ?? '').toString().toLowerCase().includes(i.toLowerCase())}
       />
     </Form.Item>
-    <Form.Item name="status" label="Trạng thái" className="w-[200px] mb-0">
+    <Form.Item name="status" label="Trạng thái" className="flex-1 mb-0">
       <AppSelect allowClear placeholder="Chọn trạng thái" options={statusOptions} />
     </Form.Item>
   </FilterSection>

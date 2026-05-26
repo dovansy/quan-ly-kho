@@ -24,10 +24,10 @@ export const SaleFilterForm = ({ form, loading, productOptions, onSearch, onClea
     <Form.Item name="productKeyword" label="Tìm sản phẩm" className="flex-1 mb-0">
       <AppAutoComplete placeholder="Nhập tên sản phẩm..." options={productOptions} />
     </Form.Item>
-    <Form.Item name="payment_status" label="Trạng thái" className="w-[200px] mb-0">
+    <Form.Item name="payment_status" label="Trạng thái" className="flex-1 mb-0">
       <AppSelect allowClear placeholder="Chọn trạng thái" options={paymentStatusOptions} />
     </Form.Item>
-    <Form.Item name="saleDate" label="Ngày bán" className="w-[180px] mb-0">
+    <Form.Item name="saleDate" label="Ngày bán" className="flex-1 mb-0">
       <AppDatePicker placeholder="Chọn ngày" format={DATE_FORMAT.DISPLAY} className="w-full" />
     </Form.Item>
   </FilterSection>

@@ -365,7 +365,7 @@ const InventoryPage = () => {
             </Col>
           </Row>
           <Row gutter={[24, 16]} align="bottom">
-            <Col xs={24} md={16}>
+            <Col xs={24} md={12}>
               <Form.Item name="keyword" label="Tìm kiếm nhanh" className="mb-0">
                 <AppAutoComplete
                   placeholder="Nhập tên sản phẩm..."
@@ -377,7 +377,7 @@ const InventoryPage = () => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+            <Col xs={24} md={12}>
               <div className="flex justify-end">
                 <Space size="middle">
                   <AppButton

@@ -126,7 +126,7 @@ const TransfersPage = () => {
             }
           />
         </Form.Item>
-        <Form.Item name="warehouse_id_from" label="Kho nguồn" className="w-[180px] mb-0">
+        <Form.Item name="warehouse_id_from" label="Kho nguồn" className="flex-1 mb-0">
           <AppSelect
             allowClear
             showSearch
@@ -137,7 +137,7 @@ const TransfersPage = () => {
             }
           />
         </Form.Item>
-        <Form.Item name="warehouse_id_to" label="Kho đích" className="w-[180px] mb-0">
+        <Form.Item name="warehouse_id_to" label="Kho đích" className="flex-1 mb-0">
           <AppSelect
             allowClear
             showSearch
@@ -148,7 +148,7 @@ const TransfersPage = () => {
             }
           />
         </Form.Item>
-        <Form.Item name="transferDate" label="Ngày chuyển" className="w-[180px] mb-0">
+        <Form.Item name="transferDate" label="Ngày chuyển" className="flex-1 mb-0">
           <AppDatePicker
             allowClear
             placeholder="Chọn ngày"
