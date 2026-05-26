@@ -15,7 +15,7 @@ import { paymentStatusOptions, saleTypeLabels } from '@/constants/options';
 import { PaymentStatus } from '@/constants/enums';
 import { useCreateSale, useGetSaleDetail, useGetSales, useUpdateSale } from '@/hooks/api/sales';
 import { useGetInventory } from '@/hooks/api/inventory';
-import { formatCartonPiecesPlain, formatCurrency, toApiDate } from '@/utils/format';
+import { formatCartonPiecesPlain, formatCurrency, getErrorMessage, toApiDate } from '@/utils/format';
 import { createEmptyLine, findInventoryFor, mapSaleItems, SaleLine, SaleOrderRow } from '../types';
 import { SaleLineRow } from './SaleLineRow';
 
@@ -298,7 +298,7 @@ export const SaleFormModal = ({
             onError: (e: any) =>
               error({
                 message: 'Lỗi cập nhật',
-                description: e?.response?.data?.message || 'Không thể cập nhật hóa đơn',
+                description: getErrorMessage(e, 'Không thể cập nhật hóa đơn'),
               }),
           }
         );
@@ -312,7 +312,7 @@ export const SaleFormModal = ({
           onError: (e: any) =>
             error({
               message: 'Lỗi tạo hóa đơn',
-              description: e?.response?.data?.message || 'Không thể tạo hóa đơn',
+              description: getErrorMessage(e, 'Không thể tạo hóa đơn'),
             }),
         });
       }

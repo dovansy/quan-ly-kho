@@ -54,6 +54,7 @@ export interface CreateSaleRequest {
 
 export interface SaleFilters {
   keyword?: string;
+  productKeyword?: string;
   paid?: string;
   payment_status?: 'paid' | 'unpaid' | 'pending';
   saleDate?: string;

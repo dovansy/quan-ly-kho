@@ -3,10 +3,11 @@ import { useMemo, useState } from 'react';
 import { FiDownload } from 'react-icons/fi';
 import { AppButton } from '@/components/atoms/AppButton';
 import { TableSection } from '@/components/organisms/table-section';
+import { useGetProducts } from '@/hooks/api/products';
 import { useAppNotification } from '@/components/templates/notification';
 import { useConfirmShipment, useDeleteSale, useGetSales, useReturnSale } from '@/hooks/api/sales';
 import { salesService } from '@/services/sales.service';
-import { toApiDate } from '@/utils/format';
+import { getErrorMessage, toApiDate } from '@/utils/format';
 import { SaleDetailModal } from './components/SaleDetailModal';
 import { SaleFilterForm } from './components/SaleFilterForm';
 import { SaleFormModal } from './components/SaleFormModal';
@@ -31,12 +32,17 @@ const SalesPage = () => {
   const [sort, setSort] = useState<{ sort_by?: SortableSaleField; sort_order?: 'asc' | 'desc' }>({});
 
   const { data: salesRes, isLoading } = useGetSales({ ...filters, ...sort });
+  const { data: productsRes } = useGetProducts({ limit: 1000 });
   const remove = useDeleteSale();
   const returnSale = useReturnSale();
   const confirmShipment = useConfirmShipment();
   const { success, error } = useAppNotification();
 
   const data = (salesRes?.data || []).map(mapSale);
+  const productOptions = (productsRes?.data || []).map((p: any) => ({
+    label: p.name,
+    value: p.name,
+  }));
   const loading = isLoading || remove.isPending || returnSale.isPending;
 
   const activeOrders = useMemo(() => data.filter(x => !x.returned), [data]);
@@ -52,6 +58,7 @@ const SalesPage = () => {
   const onSearch = (v: any) =>
     setFilters({
       keyword: v.keyword,
+      productKeyword: v.productKeyword,
       payment_status: v.payment_status || undefined,
       saleDate: v.saleDate ? toApiDate(v.saleDate) : undefined,
     });
@@ -107,7 +114,11 @@ const SalesPage = () => {
   const onDelete = (r: SaleOrderRow) => {
     remove.mutate(r.id, {
       onSuccess: () => success({ message: 'Xóa hóa đơn thành công' }),
-      onError: () => error({ message: 'Không thể xóa hóa đơn' }),
+      onError: (e: any) =>
+        error({
+          message: 'Không thể xóa hóa đơn',
+          description: getErrorMessage(e, 'Không thể xóa hóa đơn'),
+        }),
     });
   };
 
@@ -117,7 +128,7 @@ const SalesPage = () => {
       onError: (e: any) =>
         error({
           message: 'Hoàn hàng thất bại',
-          description: e?.data?.message,
+          description: getErrorMessage(e),
         }),
     });
   };
@@ -130,7 +141,7 @@ const SalesPage = () => {
         onError: (e: any) =>
           error({
             message: 'Xác nhận thất bại',
-            description: e?.response?.data?.message || e?.data?.message,
+            description: getErrorMessage(e),
           }),
       }
     );
@@ -150,6 +161,7 @@ const SalesPage = () => {
     try {
       const res = await salesService.getAll({
         keyword: filters.keyword,
+        productKeyword: filters.productKeyword,
         payment_status: filters.payment_status,
         saleDate: filters.saleDate,
         limit: 100000,
@@ -160,7 +172,7 @@ const SalesPage = () => {
     } catch (e: any) {
       error({
         message: 'Lỗi xuất Excel',
-        description: e?.response?.data?.message || 'Không thể xuất',
+        description: getErrorMessage(e, 'Không thể xuất'),
       });
     }
   };
@@ -168,6 +180,7 @@ const SalesPage = () => {
   const filterSummary = (() => {
     const parts: { label: string; value: string }[] = [];
     if (filters.keyword) parts.push({ label: 'Khách hàng', value: `"${filters.keyword}"` });
+    if (filters.productKeyword) parts.push({ label: 'Sản phẩm', value: `"${filters.productKeyword}"` });
     if (filters.payment_status) {
       const map: Record<string, string> = {
         paid: 'Đã thanh toán',
@@ -184,7 +197,13 @@ const SalesPage = () => {
     <div className="sales-page">
       <SaleStatsCards totalRevenue={totalRevenue} totalDebt={totalDebt} />
 
-      <SaleFilterForm form={filterForm} loading={loading} onSearch={onSearch} onClear={onClear} />
+      <SaleFilterForm
+        form={filterForm}
+        loading={loading}
+        productOptions={productOptions}
+        onSearch={onSearch}
+        onClear={onClear}
+      />
 
       <SaleTypeButtons onSelect={openCreate} />
 

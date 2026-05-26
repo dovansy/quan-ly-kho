@@ -10,7 +10,7 @@ import { inventoryService } from '@/services/inventory.service';
 import useDebounce from '@/hooks/useDebounce';
 import { sttColumn } from '@/utils/tableColumns';
 import { renderExpiryTag } from '@/utils/expiry';
-import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
+import { formatCartonPiecesPlain, formatDate, getErrorMessage } from '@/utils/format';
 import { renderCartonPieces } from '@/utils/quantity';
 import { exportToExcel } from '@/utils/exportExcel';
 import { Col, Form, Popconfirm, Row, Space, Tag, Tooltip, type TableProps } from 'antd';
@@ -186,7 +186,7 @@ const InventoryPage = () => {
     } catch (e: any) {
       error({
         message: 'Lỗi xuất Excel',
-        description: e?.response?.data?.message || 'Không thể xuất',
+        description: getErrorMessage(e, 'Không thể xuất'),
       });
     }
   };

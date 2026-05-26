@@ -11,7 +11,7 @@ import { useGetProducts } from '@/hooks/api/products';
 import { useGetWarehouseList } from '@/hooks/api/warehouses';
 import { DATE_FORMAT } from '@/constants/format';
 import { sttColumn } from '@/utils/tableColumns';
-import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
+import { formatCartonPiecesPlain, formatDate, formatDateTime } from '@/utils/format';
 
 const TransfersPage = () => {
   const [filterForm] = Form.useForm();
@@ -104,7 +104,7 @@ const TransfersPage = () => {
       dataIndex: 'transfer_date',
       key: 'transfer_date',
       align: 'center' as const,
-      render: (d: string) => (d ? formatDate(d) : '-'),
+      render: (d: string) => (d ? formatDateTime(d) : '-'),
     },
     {
       title: 'Ghi chú',

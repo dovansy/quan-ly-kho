@@ -8,7 +8,7 @@ import { AppSelect } from '@/components/atoms/AppSelect';
 import { CrudModal } from '@/components/organisms/crud-modal';
 import { useAppNotification } from '@/components/templates/notification';
 import { useTransferInventory } from '@/hooks/api/inventory';
-import { formatCartonPiecesPlain, formatDate } from '@/utils/format';
+import { formatCartonPiecesPlain, formatDate, getErrorMessage } from '@/utils/format';
 
 interface InventoryRow {
   id: number;
@@ -100,8 +100,8 @@ export const TransferModal = ({
   useEffect(() => {
     form.setFieldsValue({
       warehouse_id_to: undefined,
-      carton_quantity: 0,
-      piece_quantity: 0,
+      carton_quantity: undefined,
+      piece_quantity: undefined,
     });
   }, [inventoryId, form]);
 
@@ -158,7 +158,7 @@ export const TransferModal = ({
           onError: (e: any) =>
             error({
               message: 'Lỗi chuyển kho',
-              description: e?.response?.data?.message || 'Không thể chuyển kho',
+              description: getErrorMessage(e, 'Không thể chuyển kho'),
             }),
         }
       );
@@ -273,7 +273,7 @@ export const TransferModal = ({
             <Form.Item name="carton_quantity" label="Số kiện">
               <AppInputNumber
                 decimalScale={0}
-                placeholder="0"
+                placeholder="Nhập số kiện"
                 className="w-full"
                 disabled={!selected || upc <= 1}
               />
@@ -283,7 +283,7 @@ export const TransferModal = ({
             <Form.Item name="piece_quantity" label={`Số ${unitLabel || 'lẻ'}`}>
               <AppInputNumber
                 decimalScale={0}
-                placeholder="0"
+                placeholder={`Nhập số ${unitLabel || 'lẻ'}`}
                 className="w-full"
                 disabled={!selected}
               />

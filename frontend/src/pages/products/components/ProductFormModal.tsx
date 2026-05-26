@@ -8,6 +8,7 @@ import { useAppNotification } from '@/components/templates/notification';
 import { statusOptions } from '@/constants/options';
 import { useUpdateProduct } from '@/hooks/api/products';
 import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
+import { getErrorMessage } from '@/utils/format';
 import { ProductRow } from '../types';
 
 interface Props {
@@ -65,7 +66,7 @@ export const ProductFormModal = ({
             close();
           },
           onError: (e: any) =>
-            error({ message: 'Lỗi cập nhật', description: e?.response?.data?.message }),
+            error({ message: 'Lỗi cập nhật', description: getErrorMessage(e) }),
         }
       );
     });

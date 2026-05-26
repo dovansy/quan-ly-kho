@@ -15,15 +15,15 @@ export class AuthController {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      sendError(res, ErrorCode.REQUIRED, 'Username and password are required', 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập tên đăng nhập và mật khẩu', 400); return;
     }
 
     const user = await User.findOne({ where: { username }, include: [{ model: Role, as: 'roles' }] });
-    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
-    if (user.status !== 'active') { sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Account inactive', 403); return; }
+    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'Tên đăng nhập không tồn tại', 404); return; }
+    if (user.status !== 'active') { sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Tài khoản đã bị khóa', 403); return; }
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) { sendError(res, ErrorCode.WRONG_PASSWORD, 'Wrong password', 401); return; }
+    if (!valid) { sendError(res, ErrorCode.WRONG_PASSWORD, 'Mật khẩu không đúng', 401); return; }
 
     const payload: JwtPayload = { userId: user.id, username: user.username };
     sendSuccess(res, {
@@ -37,7 +37,7 @@ export class AuthController {
     const user = await User.findByPk(req.user!.userId, {
       include: [{ model: Role, as: 'roles' }],
     });
-    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'Tài khoản không tồn tại', 404); return; }
     sendSuccess(res, formatUser(user));
   };
 
@@ -48,13 +48,13 @@ export class AuthController {
     if (email) {
       const dup = await User.findOne({ where: { email } });
       if (dup && dup.id !== userId) {
-        sendError(res, ErrorCode.EXISTED_USER, 'Email already exists', 409); return;
+        sendError(res, ErrorCode.EXISTED_USER, 'Email đã được tài khoản khác sử dụng', 409); return;
       }
     }
 
     await User.update({ full_name: fullName, email, phone }, { where: { id: userId } });
     const user = await User.findByPk(userId, { include: [{ model: Role, as: 'roles' }] });
-    sendSuccess(res, formatUser(user!), 'Profile updated successfully');
+    sendSuccess(res, formatUser(user!), 'Cập nhật thông tin thành công');
   };
 
   changePassword = async (req: Request, res: Response): Promise<void> => {
@@ -62,21 +62,21 @@ export class AuthController {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      sendError(res, ErrorCode.REQUIRED, 'Current and new password are required', 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới', 400); return;
     }
     if (String(newPassword).length < 6) {
-      sendError(res, ErrorCode.EMPTY, 'New password must be at least 6 characters', 400); return;
+      sendError(res, ErrorCode.EMPTY, 'Mật khẩu mới phải có ít nhất 6 ký tự', 400); return;
     }
 
     const user = await User.findByPk(userId);
-    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'Tài khoản không tồn tại', 404); return; }
 
     if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
-      sendError(res, ErrorCode.WRONG_PASSWORD, 'Current password is incorrect', 401); return;
+      sendError(res, ErrorCode.WRONG_PASSWORD, 'Mật khẩu hiện tại không đúng', 401); return;
     }
 
     await user.update({ password_hash: await bcrypt.hash(newPassword, 10) });
-    sendSuccess(res, null, 'Password changed successfully');
+    sendSuccess(res, null, 'Đổi mật khẩu thành công');
   };
 }
 

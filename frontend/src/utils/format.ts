@@ -13,8 +13,35 @@ export const formatDate = (date: string | Dayjs): string => {
   return dayjs(date).format(DATE_FORMAT.DISPLAY);
 };
 
+export const formatDateTime = (date: string | Dayjs): string => {
+  return dayjs(date).format(DATE_FORMAT.DISPLAY_WITH_TIME);
+};
+
+export const formatDateWithTime = (
+  date: string | Dayjs,
+  timeSource?: string | Dayjs | null
+): string => {
+  const base = dayjs(date);
+  if (!timeSource) return base.format(DATE_FORMAT.DISPLAY_WITH_TIME);
+
+  const time = dayjs(timeSource);
+  return base
+    .hour(time.hour())
+    .minute(time.minute())
+    .format(DATE_FORMAT.DISPLAY_WITH_TIME);
+};
+
 export const toApiDate = (date: string | Dayjs): string => {
   return dayjs(date).format(DATE_FORMAT.API);
+};
+
+export const getErrorMessage = (error: any, fallback = 'Đã có lỗi xảy ra'): string => {
+  return (
+    error?.data?.message ||
+    error?.response?.data?.message ||
+    error?.message ||
+    fallback
+  );
 };
 
 /**

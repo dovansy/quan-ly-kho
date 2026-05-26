@@ -4,6 +4,7 @@ import { AppButton } from '@/components/atoms/AppButton';
 import { AppPasswordInput } from '@/components/atoms/AppInput';
 import { useAppNotification } from '@/components/templates/notification';
 import { useChangePassword } from '@/hooks/api/auth';
+import { getErrorMessage } from '@/utils/format';
 import { noSpaceRule } from '@/utils/validationRules';
 
 export const ChangePasswordCard = () => {
@@ -24,10 +25,10 @@ export const ChangePasswordCard = () => {
             const code = err?.data?.code;
             if (code === 4001) {
               form.setFields([
-                { name: 'currentPassword', errors: ['Mật khẩu hiện tại không đúng'] },
+                { name: 'currentPassword', errors: [getErrorMessage(err, 'Mật khẩu hiện tại không đúng')] },
               ]);
             } else {
-              error({ message: 'Đổi mật khẩu thất bại' });
+              error({ message: 'Đổi mật khẩu thất bại', description: getErrorMessage(err) });
             }
           },
         }

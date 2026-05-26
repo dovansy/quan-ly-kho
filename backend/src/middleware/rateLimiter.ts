@@ -3,7 +3,7 @@ import { ErrorCode } from '../utils/errorCodes';
 
 const tooManyRequests = {
   code: ErrorCode.FORBIDDEN_RESOURCE,
-  message: 'Too many requests. Please try again later.',
+  message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.',
   data: null,
 };
 

@@ -6,6 +6,7 @@ import { roleLabels } from '@/constants/options';
 import { useUpdateProfile } from '@/hooks/api/auth';
 import { useAppDispatch } from '@/shared/redux/hooks';
 import { updateUser } from '@/store/auth';
+import { getErrorMessage } from '@/utils/format';
 
 interface Props {
   user: any;
@@ -30,7 +31,8 @@ export const ProfileCard = ({ user }: Props) => {
             success({ message: 'Cập nhật thông tin thành công' });
             if (res.data.data) dispatch(updateUser(res.data.data));
           },
-          onError: () => error({ message: 'Cập nhật thất bại' }),
+          onError: (e: any) =>
+            error({ message: 'Cập nhật thất bại', description: getErrorMessage(e) }),
         }
       );
     });

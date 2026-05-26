@@ -8,7 +8,7 @@ import { DATE_FORMAT } from '@/constants/format';
 import { useCreateImport, useUpdateImport } from '@/hooks/api/imports';
 import { useGetProductCategories } from '@/hooks/api/products';
 import { useGetSmallUnitOptions } from '@/hooks/api/small-units';
-import { formatNumber } from '@/utils/format';
+import { formatNumber, getErrorMessage } from '@/utils/format';
 import { Col, Form, Row, Segmented } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -282,7 +282,7 @@ export const ImportFormModal = ({
             onError: (e: any) =>
               error({
                 message: 'Lỗi cập nhật',
-                description: e?.response?.data?.message || 'Không thể cập nhật',
+                description: getErrorMessage(e, 'Không thể cập nhật'),
               }),
           }
         );
@@ -295,7 +295,7 @@ export const ImportFormModal = ({
           onError: (e: any) =>
             error({
               message: 'Lỗi nhập hàng',
-              description: e?.response?.data?.message || 'Không thể nhập hàng',
+              description: getErrorMessage(e, 'Không thể nhập hàng'),
             }),
         });
       }

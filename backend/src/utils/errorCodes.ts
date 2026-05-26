@@ -29,62 +29,62 @@ export enum ErrorCode {
 export const errorDetails: Record<number, { httpStatus: number; message: string }> = {
   [ErrorCode.REQUIRED]: {
     httpStatus: 400,
-    message: 'The field is required',
+    message: 'Thiếu thông tin bắt buộc',
   },
   [ErrorCode.EMPTY]: {
     httpStatus: 400,
-    message: 'The field cannot be empty',
+    message: 'Dữ liệu không hợp lệ',
   },
   [ErrorCode.MAX_LENGTH]: {
     httpStatus: 400,
-    message: 'The field must be less than 35 characters',
+    message: 'Dữ liệu vượt quá độ dài cho phép',
   },
   [ErrorCode.INVALID_JSON_FORMAT]: {
     httpStatus: 400,
-    message: 'Invalid JSON format',
+    message: 'Dữ liệu gửi lên không đúng định dạng JSON',
   },
   [ErrorCode.UNEXPECTED_JSON_FORMAT]: {
     httpStatus: 400,
-    message: 'Unexpected JSON format',
+    message: 'Dữ liệu gửi lên không đúng cấu trúc',
   },
   [ErrorCode.WRONG_PASSWORD]: {
     httpStatus: 401,
-    message: 'Incorrect password',
+    message: 'Mật khẩu không đúng',
   },
   [ErrorCode.UNAUTHORIZED]: {
     httpStatus: 401,
-    message: 'Unauthorized',
+    message: 'Bạn chưa đăng nhập',
   },
   [ErrorCode.FORBIDDEN_RESOURCE]: {
     httpStatus: 403,
-    message: 'Forbidden resource',
+    message: 'Bạn không có quyền thực hiện thao tác này',
   },
   [ErrorCode.USER_NOT_FOUND]: {
     httpStatus: 404,
-    message: 'User not found',
+    message: 'Tài khoản không tồn tại',
   },
   [ErrorCode.EXISTED_USER]: {
     httpStatus: 409,
-    message: 'There is already an account associated with this email',
+    message: 'Email đã được sử dụng',
   },
   [ErrorCode.USERNAME_EXISTED]: {
     httpStatus: 409,
-    message: 'Username already exists',
+    message: 'Tên đăng nhập đã tồn tại',
   },
   [ErrorCode.NOT_FOUND]: {
     httpStatus: 404,
-    message: 'Resource not found',
+    message: 'Dữ liệu không tồn tại',
   },
   [ErrorCode.INTERNAL_SERVER_ERROR]: {
     httpStatus: 500,
-    message: 'Internal server error',
+    message: 'Lỗi hệ thống',
   },
   [ErrorCode.DATABASE_ERROR]: {
     httpStatus: 500,
-    message: 'Database error',
+    message: 'Không thể xử lý dữ liệu',
   },
   [ErrorCode.DEPENDENCY_INJECTION_ERROR]: {
     httpStatus: 500,
-    message: 'Dependency injection not found',
+    message: 'Thiếu cấu hình hệ thống',
   },
 };

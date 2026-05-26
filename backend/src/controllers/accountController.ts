@@ -33,29 +33,29 @@ export class AccountController {
     const { fullName, username, email, phone, password, role } = req.body;
 
     if (!username || !password) {
-      sendError(res, ErrorCode.REQUIRED, 'Username and password are required', 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập tên đăng nhập và mật khẩu', 400); return;
     }
     if (String(password).length < 6) {
-      sendError(res, ErrorCode.EMPTY, 'Password must be at least 6 characters', 400); return;
+      sendError(res, ErrorCode.EMPTY, 'Mật khẩu phải có ít nhất 6 ký tự', 400); return;
     }
     const roleName: UserRole = (role || 'admin') as UserRole;
     if (!ALLOWED_ROLES.includes(roleName)) {
-      sendError(res, ErrorCode.REQUIRED, `Role must be one of: ${ALLOWED_ROLES.join(', ')}`, 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Vai trò tài khoản không hợp lệ', 400); return;
     }
     // Only super_admin can create a super_admin account.
     if (roleName === 'super_admin' && !hasRole(req.user, 'super_admin')) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can create super_admin accounts', 403); return;
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Chỉ super admin được tạo tài khoản super admin', 403); return;
     }
 
     if (await User.findOne({ where: { username } })) {
-      sendError(res, ErrorCode.USERNAME_EXISTED, 'Username already exists', 409); return;
+      sendError(res, ErrorCode.USERNAME_EXISTED, 'Tên đăng nhập đã tồn tại', 409); return;
     }
     if (email && await User.findOne({ where: { email } })) {
-      sendError(res, ErrorCode.EXISTED_USER, 'Email already exists', 409); return;
+      sendError(res, ErrorCode.EXISTED_USER, 'Email đã được sử dụng', 409); return;
     }
 
     const roleRow = await Role.findOne({ where: { role: roleName } });
-    if (!roleRow) { sendError(res, ErrorCode.NOT_FOUND, `Role "${roleName}" does not exist`, 500); return; }
+    if (!roleRow) { sendError(res, ErrorCode.NOT_FOUND, 'Vai trò tài khoản chưa được cấu hình', 500); return; }
 
     const newUser = await sequelize.transaction(async (t) => {
       const user = await User.create({
@@ -67,7 +67,7 @@ export class AccountController {
     });
 
     const account = await User.findByPk(newUser.id, { include: [{ model: Role, as: 'roles' }] });
-    sendSuccess(res, formatAccount(account!), 'Account created successfully', 201);
+    sendSuccess(res, formatAccount(account!), 'Tạo tài khoản thành công', 201);
   };
 
   updateAccount = async (req: Request, res: Response): Promise<void> => {
@@ -75,11 +75,11 @@ export class AccountController {
     const { fullName, email, phone, status, role } = req.body;
 
     const user = await User.findByPk(id, { include: [{ model: Role, as: 'roles' }] });
-    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+    if (!user) { sendError(res, ErrorCode.USER_NOT_FOUND, 'Tài khoản không tồn tại', 404); return; }
 
     if (email) {
       const dup = await User.findOne({ where: { email, id: { [Op.ne]: id } } });
-      if (dup) { sendError(res, ErrorCode.EXISTED_USER, 'Email already exists', 409); return; }
+      if (dup) { sendError(res, ErrorCode.EXISTED_USER, 'Email đã được tài khoản khác sử dụng', 409); return; }
     }
 
     const currentRole = (user.roles?.[0] as any)?.role as UserRole | undefined;
@@ -88,11 +88,11 @@ export class AccountController {
     // Role-change guard: only super_admin can promote to/from super_admin.
     if (newRole && newRole !== currentRole) {
       if (!ALLOWED_ROLES.includes(newRole)) {
-        sendError(res, ErrorCode.REQUIRED, `Role must be one of: ${ALLOWED_ROLES.join(', ')}`, 400); return;
+        sendError(res, ErrorCode.REQUIRED, 'Vai trò tài khoản không hợp lệ', 400); return;
       }
       const touchesSuperAdmin = newRole === 'super_admin' || currentRole === 'super_admin';
       if (touchesSuperAdmin && !hasRole(req.user, 'super_admin')) {
-        sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can change super_admin role', 403); return;
+        sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Chỉ super admin được đổi vai trò super admin', 403); return;
       }
     }
 
@@ -105,26 +105,26 @@ export class AccountController {
     });
 
     const account = await User.findByPk(id, { include: [{ model: Role, as: 'roles' }] });
-    sendSuccess(res, formatAccount(account!), 'Account updated successfully');
+    sendSuccess(res, formatAccount(account!), 'Cập nhật tài khoản thành công');
   };
 
   deleteAccount = async (req: Request, res: Response): Promise<void> => {
     const targetId = Number(req.params.id);
     if (req.user?.userId === targetId) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Cannot delete your own account', 403); return;
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Không thể xóa tài khoản đang đăng nhập', 403); return;
     }
 
     const target = await User.findByPk(targetId, { include: [{ model: Role, as: 'roles' }] });
-    if (!target) { sendError(res, ErrorCode.USER_NOT_FOUND, 'User not found', 404); return; }
+    if (!target) { sendError(res, ErrorCode.USER_NOT_FOUND, 'Tài khoản không tồn tại', 404); return; }
 
     const targetRole = (target.roles?.[0] as any)?.role as UserRole | undefined;
     // Admin cannot delete admin or super_admin; only super_admin can.
     if ((targetRole === 'admin' || targetRole === 'super_admin') && !hasRole(req.user, 'super_admin')) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Only super_admin can delete admin accounts', 403); return;
+      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Chỉ super admin được xóa tài khoản admin', 403); return;
     }
 
     await target.destroy();
-    sendSuccess(res, null, 'Account deleted successfully');
+    sendSuccess(res, null, 'Xóa tài khoản thành công');
   };
 }
 

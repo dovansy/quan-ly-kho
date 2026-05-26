@@ -3,6 +3,7 @@ import { Op } from 'sequelize';
 import { SmallUnit } from '../models';
 import { sendSuccess, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
+import { getDatabaseErrorResponse } from '../utils/databaseError';
 
 export class SmallUnitController {
   list = async (req: Request, res: Response): Promise<void> => {
@@ -25,10 +26,10 @@ export class SmallUnitController {
 
   create = async (req: Request, res: Response): Promise<void> => {
     const { code, label, status } = req.body;
-    if (!code || !label) { sendError(res, ErrorCode.REQUIRED, 'code và label là bắt buộc', 400); return; }
+    if (!code || !label) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập mã và tên đơn vị', 400); return; }
 
     const exists = await SmallUnit.findOne({ where: { code } });
-    if (exists) { sendError(res, ErrorCode.USERNAME_EXISTED, 'Code đã tồn tại', 400); return; }
+    if (exists) { sendError(res, ErrorCode.USERNAME_EXISTED, 'Mã đơn vị đã tồn tại', 400); return; }
 
     const created = await SmallUnit.create({ code, label, status: status || 'active' });
     sendSuccess(res, format(created), 'Tạo đơn vị lẻ thành công', 201);
@@ -51,8 +52,11 @@ export class SmallUnitController {
       if (!deleted) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy đơn vị', 404); return; }
       sendSuccess(res, null, 'Xóa đơn vị lẻ thành công');
     } catch (err: any) {
-      // FK constraint
-      sendError(res, ErrorCode.DATABASE_ERROR, 'Đơn vị đang được sử dụng, không thể xóa', 400);
+      const mapped = getDatabaseErrorResponse(err, 'delete');
+      if (mapped.httpStatus < 500) {
+        sendError(res, mapped.code, mapped.message, mapped.httpStatus); return;
+      }
+      throw err;
     }
   };
 }

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { BaseError as SequelizeError } from 'sequelize';
 import { CustomError, typeErrors } from '../utils/customError';
 import { ErrorCode } from '../utils/errorCodes';
+import { getDatabaseErrorResponse } from '../utils/databaseError';
 import logger from '../utils/logger';
 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
@@ -11,8 +12,8 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
 
   // Sequelize validation / unique constraint errors
   if (err instanceof SequelizeError) {
-    const message = (err as any).errors?.map((e: any) => e.message).join(', ') || err.message;
-    return res.status(400).json({ code: ErrorCode.DATABASE_ERROR, message, data: null });
+    const mapped = getDatabaseErrorResponse(err, req.method === 'DELETE' ? 'delete' : 'write');
+    return res.status(mapped.httpStatus).json({ code: mapped.code, message: mapped.message, data: null });
   }
 
   // Our custom errors
@@ -31,6 +32,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   // Unknown error
-  const message = err instanceof Error ? err.message : 'Internal server error';
-  res.status(500).json({ code: ErrorCode.INTERNAL_SERVER_ERROR, message, data: null });
+  res.status(500).json({
+    code: ErrorCode.INTERNAL_SERVER_ERROR,
+    message: 'Lỗi hệ thống. Vui lòng thử lại.',
+    data: null,
+  });
 }

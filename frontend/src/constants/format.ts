@@ -1,5 +1,6 @@
 export const DATE_FORMAT = {
   DISPLAY: 'DD/MM/YYYY',
+  DISPLAY_WITH_TIME: 'DD/MM/YYYY HH:mm',
   API: 'YYYY-MM-DD',
   INVOICE_CODE: 'YYYYMMDD',
 };

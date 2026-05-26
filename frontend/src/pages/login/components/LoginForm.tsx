@@ -13,6 +13,7 @@ import { APIErrorResponse } from '@/types/api.type';
 import { authService } from '@/services/auth.service';
 import { useAppDispatch } from '@/shared/redux/hooks';
 import { loginSuccess } from '@/store/auth';
+import { getErrorMessage } from '@/utils/format';
 import { noSpaceRule } from '@/utils/validationRules';
 
 interface Props {
@@ -42,8 +43,8 @@ const LoginForm = ({ disabled = false }: Props) => {
       const isInvalidCredentials =
         errorCode === HttpErrorCode.USER_NOT_FOUND || errorCode === HttpErrorCode.WRONG_PASSWORD;
       const description = isInvalidCredentials
-        ? 'Tên đăng nhập hoặc mật khẩu không chính xác'
-        : HttpErrorMessage[errorCode] || HttpErrorMessage[HttpErrorCode.UNKNOWN_ERROR];
+        ? getErrorMessage(error, 'Tên đăng nhập hoặc mật khẩu không chính xác')
+        : getErrorMessage(error, HttpErrorMessage[errorCode] || HttpErrorMessage[HttpErrorCode.UNKNOWN_ERROR]);
       notifyError({
         message: 'Lỗi',
         description,

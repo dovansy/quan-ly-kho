@@ -34,10 +34,10 @@ export class WarehouseController {
 
   createWarehouse = async (req: Request, res: Response): Promise<void> => {
     const { name, address, manager, status } = req.body;
-    if (!name) { sendError(res, ErrorCode.REQUIRED, 'Warehouse name is required', 400); return; }
+    if (!name) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập tên kho', 400); return; }
 
     const warehouse = await Warehouse.create({ name, address, manager, status: status || 'active' });
-    sendSuccess(res, { ...warehouse.toJSON(), key: String(warehouse.id), productCount: 0 }, 'Warehouse created successfully', 201);
+    sendSuccess(res, { ...warehouse.toJSON(), key: String(warehouse.id), productCount: 0 }, 'Tạo kho thành công', 201);
   };
 
   updateWarehouse = async (req: Request, res: Response): Promise<void> => {
@@ -47,7 +47,7 @@ export class WarehouseController {
       { name, address, manager, status: status || 'active' },
       { where: { id: req.params.id } },
     );
-    if (!updated) { sendError(res, ErrorCode.NOT_FOUND, 'Warehouse not found', 404); return; }
+    if (!updated) { sendError(res, ErrorCode.NOT_FOUND, 'Kho không tồn tại', 404); return; }
 
     // Refetch with computed stats
     const [warehouse] = await Warehouse.findAll({
@@ -55,13 +55,13 @@ export class WarehouseController {
       attributes: { include: [[productCountSql, 'productCount']] },
     });
     const json = warehouse.toJSON() as any;
-    sendSuccess(res, { ...json, key: String(warehouse.id), productCount: Number(json.productCount) }, 'Warehouse updated successfully');
+    sendSuccess(res, { ...json, key: String(warehouse.id), productCount: Number(json.productCount) }, 'Cập nhật kho thành công');
   };
 
   deleteWarehouse = async (req: Request, res: Response): Promise<void> => {
     const deleted = await Warehouse.destroy({ where: { id: req.params.id } });
-    if (!deleted) { sendError(res, ErrorCode.NOT_FOUND, 'Warehouse not found', 404); return; }
-    sendSuccess(res, null, 'Warehouse deleted successfully');
+    if (!deleted) { sendError(res, ErrorCode.NOT_FOUND, 'Kho không tồn tại', 404); return; }
+    sendSuccess(res, null, 'Xóa kho thành công');
   };
 
   getWarehousesList = async (_req: Request, res: Response): Promise<void> => {

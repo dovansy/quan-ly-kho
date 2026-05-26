@@ -9,6 +9,7 @@ import { useDeleteImport, useGetImports } from '@/hooks/api/imports';
 import { useGetProducts } from '@/hooks/api/products';
 import { useGetWarehouseList } from '@/hooks/api/warehouses';
 import { stockImportsService } from '@/services/stockImports.service';
+import { getErrorMessage } from '@/utils/format';
 import { ImportFilterForm } from './components/ImportFilterForm';
 import { ImportFormModal } from './components/ImportFormModal';
 import { useImportListColumns } from './components/useImportListColumns';
@@ -133,7 +134,7 @@ const ImportsPage = () => {
     } catch (e: any) {
       error({
         message: 'Lỗi xuất Excel',
-        description: e?.response?.data?.message || 'Không thể xuất',
+        description: getErrorMessage(e, 'Không thể xuất'),
       });
     }
   };
@@ -144,7 +145,7 @@ const ImportsPage = () => {
       onError: (e: any) =>
         error({
           message: 'Lỗi xóa',
-          description: e?.response?.data?.message || 'Không thể xóa',
+          description: getErrorMessage(e, 'Không thể xóa'),
         }),
     });
   };

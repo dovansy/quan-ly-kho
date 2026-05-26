@@ -33,7 +33,7 @@ declare global {
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return sendError(res, ErrorCode.UNAUTHORIZED, 'No token provided', 401);
+    return sendError(res, ErrorCode.UNAUTHORIZED, 'Bạn chưa đăng nhập', 401);
   }
 
   const token = authHeader.split(' ')[1];
@@ -41,15 +41,15 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
   try {
     decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
   } catch {
-    return sendError(res, ErrorCode.UNAUTHORIZED, 'Invalid or expired token', 401);
+    return sendError(res, ErrorCode.UNAUTHORIZED, 'Phiên đăng nhập đã hết hạn', 401);
   }
 
   const user = await User.findByPk(decoded.userId, {
     include: [{ model: Role, as: 'roles', attributes: ['role'] }],
   });
   // Missing/inactive users get 401 so the frontend's httpClient auto-logs them out.
-  if (!user) return sendError(res, ErrorCode.UNAUTHORIZED, 'Session invalid, please log in again', 401);
-  if (user.status !== 'active') return sendError(res, ErrorCode.UNAUTHORIZED, 'Account inactive', 401);
+  if (!user) return sendError(res, ErrorCode.UNAUTHORIZED, 'Tài khoản không còn tồn tại', 401);
+  if (user.status !== 'active') return sendError(res, ErrorCode.UNAUTHORIZED, 'Tài khoản đã bị khóa', 401);
 
   req.user = {
     userId: decoded.userId,
@@ -65,9 +65,9 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
  */
 export function authorize(...allowedRoles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) return sendError(res, ErrorCode.UNAUTHORIZED, 'Not authenticated', 401);
+    if (!req.user) return sendError(res, ErrorCode.UNAUTHORIZED, 'Bạn chưa đăng nhập', 401);
     const ok = req.user.roles.some(r => allowedRoles.includes(r));
-    if (!ok) return sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Insufficient permission', 403);
+    if (!ok) return sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Bạn không có quyền thực hiện thao tác này', 403);
     next();
   };
 }

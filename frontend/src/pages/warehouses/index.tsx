@@ -14,7 +14,7 @@ import {
   useDeleteWarehouse,
 } from '@/hooks/api/warehouses';
 import { sttColumn } from '@/utils/tableColumns';
-import { formatNumber } from '@/utils/format';
+import { formatNumber, getErrorMessage } from '@/utils/format';
 import { Col, Form, Row, Tag } from 'antd';
 import { useState } from 'react';
 import { FiSearch } from 'react-icons/fi';
@@ -90,7 +90,8 @@ const WarehousesPage = () => {
               success({ message: 'Cập nhật kho thành công' });
               closeModal();
             },
-            onError: () => error({ message: 'Cập nhật kho thất bại' }),
+            onError: (e: any) =>
+              error({ message: 'Cập nhật kho thất bại', description: getErrorMessage(e) }),
           }
         );
       } else {
@@ -99,7 +100,8 @@ const WarehousesPage = () => {
             success({ message: 'Thêm kho thành công' });
             closeModal();
           },
-          onError: () => error({ message: 'Thêm kho thất bại' }),
+          onError: (e: any) =>
+            error({ message: 'Thêm kho thất bại', description: getErrorMessage(e) }),
         });
       }
     });
@@ -108,7 +110,8 @@ const WarehousesPage = () => {
   const handleDelete = (record: Warehouse) => {
     deleteMutation.mutate(record.id, {
       onSuccess: () => success({ message: 'Xóa kho thành công' }),
-      onError: () => error({ message: 'Xóa kho thất bại' }),
+      onError: (e: any) =>
+        error({ message: 'Xóa kho thất bại', description: getErrorMessage(e) }),
     });
   };
 

@@ -10,6 +10,7 @@ import { Status } from '@/constants/enums';
 import {
   useGetSmallUnits, useCreateSmallUnit, useUpdateSmallUnit, useDeleteSmallUnit,
 } from '@/hooks/api/small-units';
+import { getErrorMessage } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
 import { Col, Form, Row, Tag } from 'antd';
 import { useState } from 'react';
@@ -69,7 +70,7 @@ const SmallUnitsPage = () => {
             onError: (e: any) =>
               error({
                 message: 'Lỗi cập nhật',
-                description: e?.response?.data?.message,
+                description: getErrorMessage(e),
               }),
           }
         );
@@ -80,7 +81,7 @@ const SmallUnitsPage = () => {
             closeModal();
           },
           onError: (e: any) =>
-            error({ message: 'Lỗi tạo đơn vị', description: e?.response?.data?.message }),
+            error({ message: 'Lỗi tạo đơn vị', description: getErrorMessage(e) }),
         });
       }
     });
@@ -90,7 +91,7 @@ const SmallUnitsPage = () => {
     remove.mutate(r.id, {
       onSuccess: () => success({ message: 'Xóa đơn vị thành công' }),
       onError: (e: any) =>
-        error({ message: 'Lỗi xóa', description: e?.response?.data?.message }),
+        error({ message: 'Lỗi xóa', description: getErrorMessage(e) }),
     });
   };
 

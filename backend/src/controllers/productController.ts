@@ -51,7 +51,7 @@ export class ProductController {
     const { category, supplier, status, default_small_unit_id } = req.body;
 
     const product = await Product.findByPk(id);
-    if (!product) { sendError(res, ErrorCode.NOT_FOUND, 'Product not found', 404); return; }
+    if (!product) { sendError(res, ErrorCode.NOT_FOUND, 'Sản phẩm không tồn tại', 404); return; }
 
     await product.update({
       category: category ?? product.category,
@@ -61,7 +61,7 @@ export class ProductController {
     });
 
     const refreshed = await Product.findByPk(id, { include: [{ model: SmallUnit, as: 'defaultSmallUnit' }] });
-    sendSuccess(res, formatProduct(refreshed!), 'Product updated successfully');
+    sendSuccess(res, formatProduct(refreshed!), 'Cập nhật sản phẩm thành công');
   };
 
   /**

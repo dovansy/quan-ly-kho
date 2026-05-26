@@ -4,6 +4,7 @@ import sequelize from '../models/index';
 import { StockImport, Product, Warehouse, SmallUnit, User, StockExport } from '../models';
 import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
 import { ErrorCode } from '../utils/errorCodes';
+import { getDatabaseErrorResponse } from '../utils/databaseError';
 
 export class StockImportController {
   list = async (req: Request, res: Response): Promise<void> => {
@@ -72,11 +73,11 @@ export class StockImportController {
       input_mode, input_total_pieces, units_per_box,
     } = req.body;
 
-    if (!product_name) { sendError(res, ErrorCode.REQUIRED, 'product_name là bắt buộc', 400); return; }
-    if (!warehouse_id) { sendError(res, ErrorCode.REQUIRED, 'warehouse_id là bắt buộc', 400); return; }
-    if (!supplier) { sendError(res, ErrorCode.REQUIRED, 'supplier là bắt buộc', 400); return; }
-    if (!batch) { sendError(res, ErrorCode.REQUIRED, 'batch là bắt buộc', 400); return; }
-    if (!small_unit_id) { sendError(res, ErrorCode.REQUIRED, 'small_unit_id là bắt buộc', 400); return; }
+    if (!product_name) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập tên sản phẩm', 400); return; }
+    if (!warehouse_id) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng chọn kho nhập', 400); return; }
+    if (!supplier) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập nhà cung cấp', 400); return; }
+    if (!batch) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng nhập lô hàng', 400); return; }
+    if (!small_unit_id) { sendError(res, ErrorCode.REQUIRED, 'Vui lòng chọn đơn vị lẻ', 400); return; }
     if (carton_quantity <= 0 && piece_quantity <= 0) {
       sendError(res, ErrorCode.EMPTY, 'Số lượng nhập phải > 0', 400); return;
     }
@@ -168,7 +169,7 @@ export class StockImportController {
         sendError(
           res,
           ErrorCode.EMPTY,
-          'Không thể đổi Sản phẩm / Kho / NCC / Lô của bản ghi nhập này vì đã có hàng được bán ra. Vui lòng tạo phiếu điều chỉnh thay vì sửa trực tiếp.',
+          'Không thể đổi sản phẩm/kho/NCC/lô vì lô này đã có hàng bán ra.',
           400
         );
         return;
@@ -232,8 +233,9 @@ export class StockImportController {
         }, { transaction: t });
       });
     } catch (err: any) {
-      if (err?.original?.message?.includes('chk_ib_stock_nonneg')) {
-        sendError(res, ErrorCode.EMPTY, 'Cập nhật khiến tồn kho âm — đã có hàng xuất từ lô này', 400); return;
+      const mapped = getDatabaseErrorResponse(err, 'update');
+      if (mapped.httpStatus < 500) {
+        sendError(res, mapped.code, mapped.message, mapped.httpStatus); return;
       }
       throw err;
     }
@@ -264,8 +266,9 @@ export class StockImportController {
       if (!deleted) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy bản ghi nhập', 404); return; }
       sendSuccess(res, null, 'Xóa bản ghi nhập thành công');
     } catch (err: any) {
-      if (err?.original?.message?.includes('chk_ib_stock_nonneg')) {
-        sendError(res, ErrorCode.EMPTY, 'Không xóa được — đã có hàng xuất từ lô này', 400); return;
+      const mapped = getDatabaseErrorResponse(err, 'delete');
+      if (mapped.httpStatus < 500) {
+        sendError(res, mapped.code, mapped.message, mapped.httpStatus); return;
       }
       throw err;
     }

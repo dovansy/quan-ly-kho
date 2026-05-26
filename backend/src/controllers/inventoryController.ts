@@ -172,7 +172,7 @@ export class InventoryController {
     } = req.body;
 
     if (!product_id || !warehouse_id_from || !warehouse_id_to || !supplier || !batch) {
-      sendError(res, ErrorCode.REQUIRED, 'Thiếu thông tin chuyển kho', 400);
+      sendError(res, ErrorCode.REQUIRED, 'Vui lòng chọn đầy đủ sản phẩm, kho nguồn, kho đích, NCC và lô', 400);
       return;
     }
     if (Number(warehouse_id_from) === Number(warehouse_id_to)) {
@@ -323,11 +323,11 @@ export class InventoryController {
       sendSuccess(res, null, 'Chuyển kho thành công');
     } catch (err: any) {
       if (err?.message === 'NOT_FOUND_SOURCE') {
-        sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy lô hàng nguồn', 404);
+        sendError(res, ErrorCode.NOT_FOUND, 'Lô hàng nguồn không tồn tại trong kho', 404);
         return;
       }
       if (err?.message === 'INSUFFICIENT_STOCK') {
-        sendError(res, ErrorCode.EMPTY, 'Tồn kho nguồn không đủ', 400);
+        sendError(res, ErrorCode.EMPTY, 'Tồn kho nguồn không đủ để chuyển', 400);
         return;
       }
       throw err;

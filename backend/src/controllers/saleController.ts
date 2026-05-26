@@ -21,7 +21,7 @@ export class SaleController {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
     const {
-      keyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order, include_items,
+      keyword, productKeyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order, include_items,
     } = req.query as Record<string, string>;
     const includeItems = include_items === 'true';
 
@@ -30,6 +30,18 @@ export class SaleController {
       { customer_name: { [Op.like]: `%${keyword}%` } },
       { invoice_code: { [Op.like]: `%${keyword}%` } },
     ];
+    if (productKeyword) {
+      where[Op.and] = [
+        ...(where[Op.and] || []),
+        literal(`EXISTS (
+          SELECT 1
+          FROM stock_exports se_filter
+          INNER JOIN products p_filter ON p_filter.id = se_filter.product_id
+          WHERE se_filter.sale_order_id = SaleOrder.id
+            AND p_filter.name LIKE ${sequelize.escape(`%${productKeyword}%`)}
+        )`),
+      ];
+    }
     if (payment_status) where.payment_status = payment_status;
     else if (paid !== undefined && paid !== '') where.payment_status = paid === 'true' ? 'paid' : 'unpaid';
     if (saleDate) where.sale_date = saleDate;
@@ -347,7 +359,7 @@ async function assertStockAvailable(items: ExportPayload[], t: Transaction): Pro
     if (!balance) {
       throw new BusinessError(
         ErrorCode.EMPTY, 400,
-        `Lô "${batch}" (NCC ${supplier}) không tồn tại trong kho. Có thể thông tin lô nhập đã bị thay đổi — vui lòng mở đơn và cập nhật lại sản phẩm/lô trước khi xác nhận xuất.`,
+        `Lô "${batch}" (NCC ${supplier}) không còn tồn trong kho.`,
       );
     }
     const raw = balance.stock_pieces || 0;
@@ -364,7 +376,7 @@ async function assertStockAvailable(items: ExportPayload[], t: Transaction): Pro
     if (available < needed) {
       throw new BusinessError(
         ErrorCode.EMPTY, 400,
-        `Tồn không đủ cho lô "${batch}" (NCC ${supplier}): khả dụng ${available} (tồn ${raw} - đang chờ xuất ${pendingSum}), cần ${needed}. Vui lòng nhập thêm hàng hoặc giảm số lượng xuất.`,
+        `Tồn lô "${batch}" không đủ: còn ${available}, cần ${needed}.`,
       );
     }
   }

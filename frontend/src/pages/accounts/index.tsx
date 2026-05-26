@@ -9,6 +9,7 @@ import { statusOptions, statusLabels, roleLabels, roleOptions } from '@/constant
 import { Status } from '@/constants/enums';
 import { useGetAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/hooks/api/accounts';
 import { useAppSelector } from '@/shared/redux/hooks';
+import { getErrorMessage } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
 import { Col, Form, Row, Tag, Tooltip } from 'antd';
 import { useMemo, useState } from 'react';
@@ -103,7 +104,7 @@ const AccountsPage = () => {
             onError: (err: any) =>
               error({
                 message: 'Cập nhật tài khoản thất bại',
-                description: err?.data?.message,
+                description: getErrorMessage(err),
               }),
           }
         );
@@ -119,7 +120,7 @@ const AccountsPage = () => {
             onError: (err: any) =>
               error({
                 message: 'Thêm tài khoản thất bại',
-                description: err?.data?.message,
+                description: getErrorMessage(err),
               }),
           }
         );
@@ -131,7 +132,7 @@ const AccountsPage = () => {
     deleteMutation.mutate(record.id, {
       onSuccess: () => success({ message: 'Xóa tài khoản thành công' }),
       onError: (err: any) =>
-        error({ message: 'Xóa tài khoản thất bại', description: err?.data?.message }),
+        error({ message: 'Xóa tài khoản thất bại', description: getErrorMessage(err) }),
     });
   };
 
