@@ -21,11 +21,8 @@ export const SaleFilterForm = ({ form, loading, productOptions, onSearch, onClea
     <Form.Item name="keyword" label="Tìm khách hàng" className="flex-1 mb-0">
       <AppInput placeholder="Tên KH hoặc tên đơn hàng..." prefix={<FiSearch />} />
     </Form.Item>
-    <Form.Item name="productKeyword" label="Tìm kiếm nhanh" className="flex-1 mb-0">
-      <AppAutoComplete
-        placeholder="Nhập tên sản phẩm..."
-        options={productOptions}
-      />
+    <Form.Item name="productKeyword" label="Tìm sản phẩm" className="flex-1 mb-0">
+      <AppAutoComplete placeholder="Nhập tên sản phẩm..." options={productOptions} />
     </Form.Item>
     <Form.Item name="payment_status" label="Trạng thái" className="w-[200px] mb-0">
       <AppSelect allowClear placeholder="Chọn trạng thái" options={paymentStatusOptions} />
