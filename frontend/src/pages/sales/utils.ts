@@ -10,9 +10,17 @@ const renderCurrencyCell = (v: any) => {
 };
 
 export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
-  const flat = orders.flatMap(s => {
+  const sortedOrders = [...orders].sort((a, b) => {
+    const byDate = (b.sale_date || '').localeCompare(a.sale_date || '');
+    if (byDate !== 0) return byDate;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+
+  const flat = sortedOrders.flatMap(s => {
     const saleTypeLabel = saleTypeLabels[s.sale_type]?.label || s.sale_type;
-    const items = s.items.length ? s.items : [null];
+    const items = s.items.length
+      ? [...s.items].sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+      : [null];
     return items.map((l: any) => ({
       customer_name: s.customer_name,
       broker_name: s.broker_name || '',
@@ -33,16 +41,6 @@ export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
       unit_price: l?.unit_price ?? '',
       line_total: l?.total ?? '',
     }));
-  });
-
-  const cmp = (x: string, y: string) =>
-    (x || '').trim().localeCompare((y || '').trim(), 'vi', { sensitivity: 'base', numeric: true });
-  flat.sort((a, b) => {
-    const byDate = (b.sale_date || '').localeCompare(a.sale_date || '');
-    if (byDate !== 0) return byDate;
-    const byCustomer = cmp(a.customer_name, b.customer_name);
-    if (byCustomer !== 0) return byCustomer;
-    return cmp(a.product_name, b.product_name);
   });
 
   exportToExcel(
@@ -83,9 +81,11 @@ export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
  * `items` cần đã được enrich `units_per_carton` (theo lô tồn kho hiện tại).
  */
 export const exportSaleDetailExcel = (_order: SaleOrderRow, items: SaleLine[]) => {
-  const sortedItems = [...items].sort((a, b) =>
-    (a.product_name || '').localeCompare(b.product_name || '', 'vi')
-  );
+  const sortedItems = [...items].sort((a, b) => {
+    const byId = Number(b.id || 0) - Number(a.id || 0);
+    if (byId !== 0) return byId;
+    return (a.product_name || '').localeCompare(b.product_name || '', 'vi');
+  });
   const rows = sortedItems.map((l, i) => ({
     index: i + 1,
     product_name: l.product_name,

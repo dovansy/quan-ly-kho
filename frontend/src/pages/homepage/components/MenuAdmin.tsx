@@ -17,6 +17,7 @@ import {
   FiDownload,
   FiRepeat,
   FiTag,
+  FiBarChart2,
 } from 'react-icons/fi';
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -49,6 +50,7 @@ const MenuAdmin = () => {
     getItem('Quản lý tồn kho', 'inventory', <FiBox />, undefined, undefined, ROUTE_PATH.INVENTORY),
     getItem('Quản lý nhập hàng', 'imports', <FiDownload />, undefined, undefined, ROUTE_PATH.IMPORTS),
     getItem('Quản lý xuất hàng', 'sales', <FiShoppingCart />, undefined, undefined, ROUTE_PATH.SALES),
+    getItem('Thống kê doanh số', 'sales-report', <FiBarChart2 />, undefined, undefined, ROUTE_PATH.SALES_REPORT),
     getItem('Quản lý chuyển kho', 'transfers', <FiRepeat />, undefined, undefined, ROUTE_PATH.TRANSFERS),
     getItem('Quản lý tài khoản', 'accounts', <FiUsers />, undefined, undefined, ROUTE_PATH.ACCOUNTS),
     getItem('Quản lý tài nguyên', 'resources', <FiLayers />, [
@@ -67,6 +69,7 @@ const MenuAdmin = () => {
       inventory: { key: 'inventory' },
       imports: { key: 'imports' },
       sales: { key: 'sales' },
+      'sales-report': { key: 'sales-report' },
       transfers: { key: 'transfers' },
       accounts: { key: 'accounts' },
       products: { key: 'products', parent: 'resources' },

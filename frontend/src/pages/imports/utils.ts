@@ -4,9 +4,13 @@ import { formatDate } from '@/utils/format';
 import { ImportRecord } from './types';
 
 export const exportImportsExcel = (data: ImportRecord[]) => {
-  const sorted = [...data].sort((a, b) =>
-    (a.product_name || '').localeCompare(b.product_name || '', 'vi')
-  );
+  const sorted = [...data].sort((a, b) => {
+    const byDate = (b.import_date || '').localeCompare(a.import_date || '');
+    if (byDate !== 0) return byDate;
+    const byId = Number((b as any).id || 0) - Number((a as any).id || 0);
+    if (byId !== 0) return byId;
+    return (a.product_name || '').localeCompare(b.product_name || '', 'vi');
+  });
   exportToExcel(
     [
       { title: 'STT', dataIndex: 'index' },

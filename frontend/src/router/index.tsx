@@ -16,6 +16,7 @@ import {
   MyAccountPage,
   InventoryPage,
   SalesPage,
+  SalesReportPage,
   AccountsPage,
   ProductsPage,
   WarehousesPage,
@@ -48,6 +49,7 @@ export default function AppContainer() {
                 <Route path={ROUTE_PATH.MY_PROFILE} element={<MyAccountPage />} />
                 <Route path={ROUTE_PATH.INVENTORY} element={<InventoryPage />} />
                 <Route path={ROUTE_PATH.SALES} element={<SalesPage />} />
+                <Route path={ROUTE_PATH.SALES_REPORT} element={<SalesReportPage />} />
                 <Route path={ROUTE_PATH.ACCOUNTS} element={<AccountsPage />} />
                 <Route path={ROUTE_PATH.PRODUCTS} element={<ProductsPage />} />
                 <Route path={ROUTE_PATH.WAREHOUSES} element={<WarehousesPage />} />

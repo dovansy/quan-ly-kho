@@ -7,7 +7,7 @@ import { PaginationContext } from '@/utils/tableColumns';
 
 interface TableSectionProps<T = any> extends Pick<
   TableProps<T>,
-  'columns' | 'dataSource' | 'loading' | 'scroll' | 'onChange'
+  'columns' | 'dataSource' | 'loading' | 'scroll' | 'onChange' | 'expandable'
 > {
   totalLabel: string;
   totalCount: number;
@@ -35,6 +35,7 @@ export const TableSection = <T extends object>({
   current,
   isFiltering,
   onChange,
+  expandable,
 }: TableSectionProps<T>) => {
   const [internalPagination, setInternalPagination] = useState({
     current: current ?? 1,
@@ -87,6 +88,7 @@ export const TableSection = <T extends object>({
           isFiltering={isFiltering}
           onChange={handleChange}
           pagination={paginationConfig}
+          expandable={expandable}
         />
       </PaginationContext.Provider>
     </div>

@@ -107,20 +107,34 @@ export const SaleFormModal = ({
     [effectiveInventoryList, editingInventoryIds]
   );
 
-  // Chỉ fetch khi modal mở VÀ user đang chọn loại broker — tránh request thừa lúc page load.
   const { data: brokerSalesRes } = useGetSales(
-    { sale_type: SaleType.BROKER, limit: 1000 },
+    { sale_type: SaleType.BROKER, limit: 100000 },
     { enabled: open && currentSaleType === SaleType.BROKER }
   );
+  const { data: retailSalesRes } = useGetSales(
+    { sale_type: SaleType.RETAIL, limit: 100000 },
+    { enabled: open && currentSaleType === SaleType.RETAIL }
+  );
   const brokerNameOpts = useMemo(() => {
-    const set = new Set<string>();
-    (brokerSalesRes?.data || []).forEach((s: any) => {
-      if (s.broker_name) set.add(s.broker_name);
+    const map = new Map<string, { label: string; value: string }>();
+    (brokerSalesRes?.data || []).forEach((sale: any) => {
+      const name = String(sale.broker_name || '').trim();
+      if (!name) return;
+      const key = name.toLocaleLowerCase('vi');
+      if (!map.has(key)) map.set(key, { label: name, value: name });
     });
-    return Array.from(set)
-      .sort((a, b) => a.localeCompare(b, 'vi'))
-      .map(n => ({ label: n, value: n }));
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi'));
   }, [brokerSalesRes]);
+  const retailCustomerNameOpts = useMemo(() => {
+    const map = new Map<string, { label: string; value: string }>();
+    (retailSalesRes?.data || []).forEach((sale: any) => {
+      const name = String(sale.customer_name || '').trim();
+      if (!name) return;
+      const key = name.toLocaleLowerCase('vi');
+      if (!map.has(key)) map.set(key, { label: name, value: name });
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi'));
+  }, [retailSalesRes]);
 
   useEffect(() => {
     if (!open) return;
@@ -131,7 +145,7 @@ export const SaleFormModal = ({
         customerAddress: editing.customer_address,
         brokerName: editing.broker_name || undefined,
         saleType: editing.sale_type,
-        paymentStatus: editing.payment_status,
+        paymentStatus: editing.returned ? PaymentStatus.PENDING : editing.payment_status,
         saleDate: editing.sale_date ? dayjs(editing.sale_date) : undefined,
       });
       // Đợi cả detail (items) và inventory edit-mode load xong rồi mới enrich.
@@ -175,8 +189,10 @@ export const SaleFormModal = ({
     defaultSaleType,
     effectiveInventoryList,
     editInvQuery.isLoading,
+    editInvQuery.data,
     editingItems,
     detailQuery.isLoading,
+    detailQuery.data,
     form,
   ]);
 
@@ -271,7 +287,7 @@ export const SaleFormModal = ({
         customerAddress: values.customerAddress || '',
         brokerName: values.saleType === SaleType.BROKER ? values.brokerName || '' : '',
         saleType: values.saleType,
-        paymentStatus: values.paymentStatus || PaymentStatus.UNPAID,
+        paymentStatus: values.paymentStatus || (editing ? PaymentStatus.PENDING : PaymentStatus.UNPAID),
         saleDate: toApiDate(values.saleDate),
         items: lines.map(l => ({
           product_id: l.product_id,
@@ -351,11 +367,22 @@ export const SaleFormModal = ({
                 label={currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'}
                 rules={[{ required: true }]}
               >
-                <AppInput
-                  placeholder={
-                    currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'
-                  }
-                />
+                {currentSaleType === SaleType.RETAIL ? (
+                  <AppAutoComplete
+                    allowClear
+                    placeholder="Nhập hoặc chọn khách hàng bán lẻ"
+                    options={retailCustomerNameOpts}
+                    filterOption={(i, o) =>
+                      ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
+                    }
+                  />
+                ) : (
+                  <AppInput
+                    placeholder={
+                      currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'
+                    }
+                  />
+                )}
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
@@ -377,7 +404,7 @@ export const SaleFormModal = ({
             </Col>
             <Col xs={24} sm={8}>
               <Form.Item name="paymentStatus" label="Trạng thái" rules={[{ required: true }]}>
-                <AppSelect options={paymentStatusOptions} />
+                <AppSelect options={paymentStatusOptions} disabled={!!editing?.returned} />
               </Form.Item>
             </Col>
           </Row>

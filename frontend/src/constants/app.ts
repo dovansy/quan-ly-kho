@@ -8,6 +8,7 @@ export const ROUTE_PATH = {
   MY_PROFILE: '/my-profile',
   INVENTORY: '/inventory',
   SALES: '/sales',
+  SALES_REPORT: '/sales-report',
   ACCOUNTS: '/accounts',
   PRODUCTS: '/products',
   WAREHOUSES: '/warehouses',
