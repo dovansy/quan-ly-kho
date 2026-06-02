@@ -16,12 +16,27 @@ export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
     return Number(b.id || 0) - Number(a.id || 0);
   });
 
-  const flat = sortedOrders.flatMap(s => {
+  const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
+  const orderInfoColumnIndexes = [0, 1, 2, 3, 4, 5, 6];
+  let rowIndex = 1;
+
+  const flat = sortedOrders.flatMap((s, orderIndex) => {
     const saleTypeLabel = saleTypeLabels[s.sale_type]?.label || s.sale_type;
     const items = s.items.length
       ? [...s.items].sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
       : [null];
+    if (items.length > 1) {
+      orderInfoColumnIndexes.forEach(columnIndex => {
+        merges.push({
+          s: { r: rowIndex, c: columnIndex },
+          e: { r: rowIndex + items.length - 1, c: columnIndex },
+        });
+      });
+    }
+    rowIndex += items.length;
+
     return items.map((l: any) => ({
+      order_index: orderIndex + 1,
       customer_name: s.customer_name,
       broker_name: s.broker_name || '',
       customer_phone: s.customer_phone,
@@ -45,7 +60,7 @@ export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
 
   exportToExcel(
     [
-      { title: 'STT', dataIndex: 'index' },
+      { title: 'STT', dataIndex: 'order_index' },
       {
         title: 'Khách hàng/đơn hàng',
         dataIndex: 'customer_name',
@@ -72,7 +87,8 @@ export const exportSalesExcel = (orders: SaleOrderDetail[]) => {
     ],
     flat,
     `Ban_hang_${dayjs().format('YYYYMMDD_HHmmss')}`,
-    'Ban hang'
+    'Ban hang',
+    merges
   );
 };
 
