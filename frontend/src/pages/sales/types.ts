@@ -31,7 +31,7 @@ export interface SaleOrderRow {
   items_count: number;
   total_amount: number;
   paid: boolean;
-  payment_status: 'paid' | 'unpaid' | 'pending';
+  payment_status: 'paid' | 'unpaid' | 'pending' | 'cancelled';
   sale_date: string;
   returned: boolean;
   returned_at: string | null;

@@ -4,7 +4,7 @@ import { AppDatePicker } from '@/components/atoms/AppDatepicker';
 import { AppSelect } from '@/components/atoms/AppSelect';
 import { FilterSection } from '@/components/organisms/filter-section';
 import { DATE_FORMAT } from '@/constants/format';
-import { paymentStatusOptions } from '@/constants/options';
+import { salesReportPaymentStatusOptions } from '@/constants/options';
 
 interface Props {
   form: FormInstance;
@@ -59,7 +59,7 @@ export const SalesReportFilterForm = ({
         />
       </Form.Item>
       <Form.Item name="payment_status" label="Trạng thái" className="flex-1 mb-0">
-        <AppSelect allowClear placeholder="Chọn trạng thái" options={paymentStatusOptions} />
+        <AppSelect allowClear placeholder="Chọn trạng thái" options={salesReportPaymentStatusOptions} />
       </Form.Item>
     </FilterSection>
   );

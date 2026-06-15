@@ -6,9 +6,12 @@ import { sendSuccess } from '../utils/responseHelper';
 export class SalesReportController {
   list = async (req: Request, res: Response): Promise<void> => {
     const { brokerName, fromDate, toDate, payment_status } = req.query as Record<string, string>;
+    const normalizedPaymentStatus =
+      payment_status === 'paid' || payment_status === 'unpaid' ? payment_status : undefined;
     const where: any = {
       sale_type: { [Op.in]: ['retail', 'broker'] },
       returned: false,
+      payment_status: { [Op.in]: ['unpaid', 'paid'] },
     };
 
     if (brokerName) {
@@ -23,7 +26,7 @@ export class SalesReportController {
         ...(toDate ? { [Op.lte]: toDate } : {}),
       };
     }
-    if (payment_status) where.payment_status = payment_status;
+    if (normalizedPaymentStatus) where.payment_status = normalizedPaymentStatus;
 
     const rows = await SaleOrder.findAll({
       where,
@@ -60,6 +63,7 @@ export class SalesReportController {
       where: {
         sale_type: { [Op.in]: ['retail', 'broker'] },
         returned: false,
+        payment_status: { [Op.in]: ['unpaid', 'paid'] },
         [Op.or]: [
           { broker_name: { [Op.ne]: null } },
           { customer_name: { [Op.ne]: null } },

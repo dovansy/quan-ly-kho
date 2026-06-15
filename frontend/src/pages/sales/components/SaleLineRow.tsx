@@ -10,6 +10,7 @@ interface Props {
   idx: number;
   isFirst: boolean;
   line: SaleLine;
+  disabled?: boolean;
   inventoryOptions: { label: string; value: number; record: any }[];
   onPick: (idx: number, inventoryId: number) => void;
   onUpdate: (idx: number, patch: Partial<SaleLine>) => void;
@@ -20,6 +21,7 @@ export const SaleLineRow = ({
   idx,
   isFirst,
   line,
+  disabled = false,
   inventoryOptions,
   onPick,
   onUpdate,
@@ -32,6 +34,7 @@ export const SaleLineRow = ({
           showSearch
           placeholder="Chọn sản phẩm tồn"
           value={line.inventory_id}
+          disabled={disabled}
           options={inventoryOptions}
           filterOption={(i, o) =>
             ((o?.label as string) ?? '').toLowerCase().includes(i.toLowerCase())
@@ -46,6 +49,7 @@ export const SaleLineRow = ({
           decimalScale={0}
           value={line.carton_quantity || undefined}
           placeholder="0"
+          disabled={disabled}
           className="w-full"
           onValueChange={v => onUpdate(idx, { carton_quantity: v.floatValue || 0 })}
         />
@@ -57,6 +61,7 @@ export const SaleLineRow = ({
           decimalScale={0}
           value={line.piece_quantity || undefined}
           placeholder="0"
+          disabled={disabled}
           className="w-full"
           onValueChange={v => onUpdate(idx, { piece_quantity: v.floatValue || 0 })}
         />
@@ -68,6 +73,7 @@ export const SaleLineRow = ({
           decimalScale={0}
           value={line.unit_price || undefined}
           placeholder="0"
+          disabled={disabled}
           className="w-full"
           onValueChange={v => onUpdate(idx, { unit_price: v.floatValue || 0 })}
         />
@@ -86,7 +92,7 @@ export const SaleLineRow = ({
     </Col>
     <Col xs={2} md={1}>
       <Form.Item label={isFirst ? ' ' : ''} className="mb-1">
-        <AppButton danger icon={<FiTrash2 />} onClick={() => onRemove(idx)} />
+        <AppButton danger icon={<FiTrash2 />} onClick={() => onRemove(idx)} disabled={disabled} />
       </Form.Item>
     </Col>
   </Row>

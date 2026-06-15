@@ -34,12 +34,19 @@ export const paymentStatusOptions = [
   { label: 'Đã thanh toán', value: PaymentStatus.PAID },
   { label: 'Chưa thanh toán', value: PaymentStatus.UNPAID },
   { label: 'Chờ xuất hàng', value: PaymentStatus.PENDING },
+  { label: 'Huỷ đơn', value: PaymentStatus.CANCELLED },
+];
+
+export const salesReportPaymentStatusOptions = [
+  { label: 'Đã thanh toán', value: PaymentStatus.PAID },
+  { label: 'Chưa thanh toán', value: PaymentStatus.UNPAID },
 ];
 
 export const paymentStatusLabels: Record<string, { label: string; color: string }> = {
   [PaymentStatus.PAID]: { label: 'Đã thanh toán', color: 'success' },
   [PaymentStatus.UNPAID]: { label: 'Chưa thanh toán', color: 'error' },
   [PaymentStatus.PENDING]: { label: 'Chờ xuất hàng', color: 'gold' },
+  [PaymentStatus.CANCELLED]: { label: 'Huỷ đơn', color: 'default' },
 };
 
 // --- Unit (large unit: kiện / thùng / hộp) ---

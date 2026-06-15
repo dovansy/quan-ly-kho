@@ -69,11 +69,13 @@ export const createStockImportSchema: Schema = {
 export const createSaleSchema: Schema = {
   customerName: [required(), maxLength(255)],
   saleType: [required(), isIn(['wholesale', 'retail', 'broker'] as const)],
+  paymentStatus: [isIn(['paid', 'unpaid', 'pending', 'cancelled'] as const)],
   saleDate: [required()],
   items: [required(), isArray(), minArrayLength(1, 'Hóa đơn phải có ít nhất 1 dòng')],
 };
 
 export const updateSaleSchema: Schema = {
   saleType: [isIn(['wholesale', 'retail', 'broker'] as const)],
+  paymentStatus: [isIn(['paid', 'unpaid', 'pending', 'cancelled'] as const)],
   items: [isArray()],
 };

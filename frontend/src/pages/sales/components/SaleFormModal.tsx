@@ -16,6 +16,7 @@ import { PaymentStatus } from '@/constants/enums';
 import { useCreateSale, useGetSaleDetail, useGetSales, useUpdateSale } from '@/hooks/api/sales';
 import { useGetInventory } from '@/hooks/api/inventory';
 import { formatCartonPiecesPlain, formatCurrency, getErrorMessage, toApiDate } from '@/utils/format';
+import { canEditOrder, canEditProducts, isPendingOrder } from '../statusRules';
 import { createEmptyLine, findInventoryFor, mapSaleItems, SaleLine, SaleOrderRow } from '../types';
 import { SaleLineRow } from './SaleLineRow';
 
@@ -39,6 +40,27 @@ export const SaleFormModal = ({
   const create = useCreateSale();
   const update = useUpdateSale();
   const currentSaleType = Form.useWatch('saleType', form);
+  const canEditProductSection = canEditProducts(editing);
+  const isEditingPendingOrder = isPendingOrder(editing);
+  const isProductSectionDisabled = !canEditProductSection;
+  const paymentStatusSelectOptions = useMemo(() => {
+    if (!editing) {
+      return paymentStatusOptions.filter(option => option.value === PaymentStatus.PENDING);
+    }
+    if (isEditingPendingOrder) {
+      return paymentStatusOptions.filter(option =>
+        [
+          PaymentStatus.PENDING,
+          PaymentStatus.PAID,
+          PaymentStatus.UNPAID,
+          PaymentStatus.CANCELLED,
+        ].includes(option.value as PaymentStatus)
+      );
+    }
+    return paymentStatusOptions.filter(
+      option => option.value !== PaymentStatus.CANCELLED || option.value === editing.payment_status
+    );
+  }, [editing, isEditingPendingOrder]);
   const { success, error, warning } = useAppNotification();
 
   // Inventory mặc định (create mode): chỉ fetch khi modal mở.
@@ -178,8 +200,7 @@ export const SaleFormModal = ({
       form.setFieldsValue({
         saleDate: dayjs(),
         saleType: initialSaleType,
-        paymentStatus:
-          initialSaleType === SaleType.WHOLESALE ? PaymentStatus.PENDING : PaymentStatus.UNPAID,
+        paymentStatus: PaymentStatus.PENDING,
       });
       setLines([]);
     }
@@ -202,11 +223,18 @@ export const SaleFormModal = ({
     onClose();
   };
 
-  const addLine = () => setLines(prev => [createEmptyLine(), ...prev]);
+  const addLine = () => {
+    if (isProductSectionDisabled) return;
+    setLines(prev => [createEmptyLine(), ...prev]);
+  };
 
-  const removeLine = (idx: number) => setLines(prev => prev.filter((_, i) => i !== idx));
+  const removeLine = (idx: number) => {
+    if (isProductSectionDisabled) return;
+    setLines(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const updateLine = (idx: number, patch: Partial<SaleLine>) => {
+    if (isProductSectionDisabled) return;
     let overStock: SaleLine | null = null;
     setLines(prev => {
       const next = [...prev];
@@ -231,6 +259,7 @@ export const SaleFormModal = ({
   };
 
   const onPickInventory = (idx: number, inventoryId: number) => {
+    if (isProductSectionDisabled) return;
     const opt = inventoryOptions.find(o => o.value === inventoryId);
     if (!opt) return;
     const r = opt.record;
@@ -255,6 +284,7 @@ export const SaleFormModal = ({
   };
 
   const onSubmit = () => {
+    if (!canEditOrder(editing)) return;
     form.validateFields().then(values => {
       if (lines.length === 0) {
         warning({ message: 'Thiếu sản phẩm', description: 'Phải có ít nhất 1 sản phẩm' });
@@ -272,7 +302,7 @@ export const SaleFormModal = ({
           });
           return;
         }
-        if (l.quantity > l.available) {
+        if (!isProductSectionDisabled && l.quantity > l.available) {
           warning({
             message: 'Vượt tồn khả dụng',
             description: `Tồn khả dụng không đủ cho "${l.product_name}" (lô ${l.batch}): còn ${l.available} ${l.small_unit_label} (đã trừ các đơn chờ xuất), cần ${l.quantity}`,
@@ -287,7 +317,7 @@ export const SaleFormModal = ({
         customerAddress: values.customerAddress || '',
         brokerName: values.saleType === SaleType.BROKER ? values.brokerName || '' : '',
         saleType: values.saleType,
-        paymentStatus: values.paymentStatus || (editing ? PaymentStatus.PENDING : PaymentStatus.UNPAID),
+        paymentStatus: values.paymentStatus || PaymentStatus.PENDING,
         saleDate: toApiDate(values.saleDate),
         items: lines.map(l => ({
           product_id: l.product_id,
@@ -346,6 +376,7 @@ export const SaleFormModal = ({
       onCancel={close}
       onSubmit={onSubmit}
       submitLabel={editing ? 'Cập nhật' : 'Tạo hóa đơn'}
+      submitDisabled={!canEditOrder(editing)}
       loading={create.isPending || update.isPending}
       width={1100}
     >
@@ -370,6 +401,7 @@ export const SaleFormModal = ({
                 {currentSaleType === SaleType.RETAIL ? (
                   <AppAutoComplete
                     allowClear
+                    disabled={!canEditOrder(editing)}
                     placeholder="Nhập hoặc chọn khách hàng bán lẻ"
                     options={retailCustomerNameOpts}
                     filterOption={(i, o) =>
@@ -378,6 +410,7 @@ export const SaleFormModal = ({
                   />
                 ) : (
                   <AppInput
+                    disabled={!canEditOrder(editing)}
                     placeholder={
                       currentSaleType === SaleType.WHOLESALE ? 'Tên đơn hàng' : 'Tên khách hàng'
                     }
@@ -387,24 +420,27 @@ export const SaleFormModal = ({
             </Col>
             <Col xs={24} sm={8}>
               <Form.Item name="customerPhone" label="SĐT">
-                <AppInput placeholder="SĐT" />
+                <AppInput placeholder="SĐT" disabled={!canEditOrder(editing)} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
               <Form.Item name="saleDate" label="Ngày bán" rules={[{ required: true }]}>
-                <AppDatePicker format={DATE_FORMAT.DISPLAY} className="w-full" />
+                <AppDatePicker format={DATE_FORMAT.DISPLAY} className="w-full" disabled={!canEditOrder(editing)} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={[16, 0]}>
             <Col xs={24} sm={16}>
               <Form.Item name="customerAddress" label="Địa chỉ">
-                <AppInput placeholder="Địa chỉ" />
+                <AppInput placeholder="Địa chỉ" disabled={!canEditOrder(editing)} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={8}>
               <Form.Item name="paymentStatus" label="Trạng thái" rules={[{ required: true }]}>
-                <AppSelect options={paymentStatusOptions} disabled={!!editing?.returned} />
+                <AppSelect
+                  options={paymentStatusSelectOptions}
+                  disabled={!editing || !!editing?.returned || !canEditOrder(editing)}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -417,6 +453,7 @@ export const SaleFormModal = ({
                   rules={[{ required: true, message: 'Vui lòng nhập tên nhà môi giới' }]}
                 >
                   <AppAutoComplete
+                    disabled={!canEditOrder(editing)}
                     placeholder="Nhập hoặc chọn nhà môi giới"
                     options={brokerNameOpts}
                     filterOption={(i, o) =>
@@ -433,10 +470,23 @@ export const SaleFormModal = ({
 
           <div className="flex items-center justify-between pt-2 mt-2 mb-2 border-t">
             <h4 className="m-0 text-base font-semibold">Danh sách sản phẩm bán</h4>
-            <AppButton icon={<FiPlus />} onClick={addLine} type="default">
+            <AppButton
+              icon={<FiPlus />}
+              onClick={addLine}
+              type="default"
+              disabled={isProductSectionDisabled || !canEditOrder(editing)}
+            >
               Thêm sản phẩm
             </AppButton>
           </div>
+          {isProductSectionDisabled && (
+            <Alert
+              type="info"
+              showIcon
+              className="mb-4"
+              message="Chỉ đơn hàng ở trạng thái Chờ xuất hàng mới được chỉnh sửa sản phẩm"
+            />
+          )}
           {lines.length === 0 && (
             <p className="py-4 text-sm text-center text-gray-400">
               Chưa có sản phẩm nào — bấm "Thêm sản phẩm" để chọn từ kho.
@@ -455,6 +505,7 @@ export const SaleFormModal = ({
                 idx={idx}
                 isFirst={idx === 0}
                 line={line}
+                disabled={isProductSectionDisabled}
                 inventoryOptions={optsForThisLine}
                 onPick={onPickInventory}
                 onUpdate={updateLine}

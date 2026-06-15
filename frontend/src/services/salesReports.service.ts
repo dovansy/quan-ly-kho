@@ -6,7 +6,7 @@ export interface SalesReportFilters {
   brokerName?: string;
   fromDate?: string;
   toDate?: string;
-  payment_status?: 'paid' | 'unpaid' | 'pending';
+  payment_status?: 'paid' | 'unpaid' | 'pending' | 'cancelled';
 }
 
 export const salesReportsService = {

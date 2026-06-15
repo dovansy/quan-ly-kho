@@ -32,7 +32,7 @@ export interface Sale {
   items_count: number;
   total_amount: number;
   paid: boolean;
-  payment_status: 'paid' | 'unpaid' | 'pending';
+  payment_status: 'paid' | 'unpaid' | 'pending' | 'cancelled';
   sale_date: string;
   returned: boolean;
   returned_at: string | null;
@@ -48,7 +48,7 @@ export interface CreateSaleRequest {
   saleType: string;
   items: Omit<SaleItem, 'id' | 'warehouse_name' | 'small_unit'>[];
   paid?: boolean;
-  paymentStatus?: 'paid' | 'unpaid' | 'pending';
+  paymentStatus?: 'paid' | 'unpaid' | 'pending' | 'cancelled';
   saleDate: string;
 }
 
@@ -56,7 +56,7 @@ export interface SaleFilters {
   keyword?: string;
   productKeyword?: string;
   paid?: string;
-  payment_status?: 'paid' | 'unpaid' | 'pending';
+  payment_status?: 'paid' | 'unpaid' | 'pending' | 'cancelled';
   saleDate?: string;
   sale_type?: string;
   page?: number;

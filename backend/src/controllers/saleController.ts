@@ -1,35 +1,49 @@
 import { Request, Response } from 'express';
-import { Op, Transaction, literal } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import sequelize from '../models/index';
-import { SaleOrder, StockExport, InventoryBalance, Product, Warehouse, SmallUnit } from '../models';
-import { sendSuccess, sendPaginated, sendError } from '../utils/responseHelper';
+import { Product, SaleOrder, SmallUnit, StockExport, Warehouse } from '../models';
+import {
+  BusinessError,
+  createSaleOrder,
+  deleteSaleOrder,
+  confirmShipment,
+  fetchOrder,
+  formatOrder,
+  formatOrderDetail,
+  formatOrderSummary,
+  returnSaleOrder,
+  updateSaleOrder,
+} from '../services/saleOrderService';
 import { ErrorCode } from '../utils/errorCodes';
+import { sendError, sendPaginated, sendSuccess } from '../utils/responseHelper';
 
-interface ExportPayload {
-  product_id: number;
-  warehouse_id: number;
-  supplier: string;
-  batch: string;
-  small_unit_id: number;
-  quantity: number;
-  unit_price: number;
-  total?: number;
-}
+const SORT_STATUS_ORDER =
+  "CASE WHEN returned = 1 THEN 4 WHEN payment_status = 'pending' THEN 0 WHEN payment_status = 'unpaid' THEN 1 WHEN payment_status = 'paid' THEN 2 WHEN payment_status = 'cancelled' THEN 3 ELSE 5 END";
 
 export class SaleController {
   list = async (req: Request, res: Response): Promise<void> => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, parseInt(req.query.limit as string) || 50);
     const {
-      keyword, productKeyword, paid, payment_status, saleDate, sale_type, sort_by, sort_order, include_items,
+      keyword,
+      productKeyword,
+      paid,
+      payment_status,
+      saleDate,
+      sale_type,
+      sort_by,
+      sort_order,
+      include_items,
     } = req.query as Record<string, string>;
     const includeItems = include_items === 'true';
 
     const where: any = {};
-    if (keyword) where[Op.or] = [
-      { customer_name: { [Op.like]: `%${keyword}%` } },
-      { invoice_code: { [Op.like]: `%${keyword}%` } },
-    ];
+    if (keyword) {
+      where[Op.or] = [
+        { customer_name: { [Op.like]: `%${keyword}%` } },
+        { invoice_code: { [Op.like]: `%${keyword}%` } },
+      ];
+    }
     if (productKeyword) {
       where[Op.and] = [
         ...(where[Op.and] || []),
@@ -56,11 +70,9 @@ export class SaleController {
     } else if (sort_by === 'total_amount') {
       order = [['total_amount', dir]];
     } else if (sort_by === 'status') {
-      order = [[literal("CASE WHEN returned = 1 THEN 3 WHEN payment_status = 'pending' THEN 0 WHEN payment_status = 'paid' THEN 2 ELSE 1 END"), dir]];
+      order = [[literal(SORT_STATUS_ORDER), dir]];
     }
 
-    // Mặc định list KHÔNG join stock_exports — chỉ count để hiển thị "Số sản phẩm".
-    // Khi cần xuất Excel, FE truyền include_items=true để lấy đầy đủ.
     const { count, rows } = await SaleOrder.findAndCountAll({
       where,
       attributes: {
@@ -69,14 +81,17 @@ export class SaleController {
         ],
       },
       include: includeItems
-        ? [{
-            model: StockExport, as: 'items',
-            include: [
-              { model: Product, as: 'product' },
-              { model: Warehouse, as: 'warehouse' },
-              { model: SmallUnit, as: 'smallUnit' },
-            ],
-          }]
+        ? [
+            {
+              model: StockExport,
+              as: 'items',
+              include: [
+                { model: Product, as: 'product' },
+                { model: Warehouse, as: 'warehouse' },
+                { model: SmallUnit, as: 'smallUnit' },
+              ],
+            },
+          ]
         : [],
       order,
       limit,
@@ -84,74 +99,46 @@ export class SaleController {
       distinct: includeItems,
     });
 
-    const formatter: (o: any) => any = includeItems ? formatOrderDetail : formatOrderSummary;
-    sendPaginated(res, rows.map(formatter), page, limit, count);
+    sendPaginated(res, rows.map(includeItems ? formatOrderDetail : formatOrderSummary), page, limit, count);
   };
 
   getDetail = async (req: Request, res: Response): Promise<void> => {
     const order = await fetchOrder(Number(req.params.id));
-    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
+    if (!order) {
+      sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404);
+      return;
+    }
     sendSuccess(res, formatOrderDetail(order));
   };
 
   create = async (req: Request, res: Response): Promise<void> => {
     const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, paymentStatus, saleDate } = req.body;
-    const userId = req.user?.userId || null;
+    const userId = (req as any).user?.userId || null;
 
     if (!Array.isArray(items) || items.length === 0) {
-      sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400);
+      return;
     }
 
-    const status = normalizePaymentStatus(paymentStatus, paid);
-    const isPending = status === 'pending';
-
-    const totalAmount = (items as ExportPayload[]).reduce(
-      (sum, i) => sum + Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)), 0,
-    );
-
     try {
-      const order = await sequelize.transaction(async (t) => {
-        await assertStockAvailable(items, t);
-
-        const invoiceCode = await generateInvoiceCode(t);
-        const o = await SaleOrder.create({
-          invoice_code: invoiceCode,
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_address: customerAddress,
-          broker_name: saleType === 'broker' ? (brokerName || null) : null,
-          sale_type: saleType,
-          total_amount: totalAmount,
-          paid: status === 'paid',
-          payment_status: status,
-          sale_date: saleDate || new Date(),
-          created_by_user_id: userId,
-        }, { transaction: t });
-
-        await StockExport.bulkCreate(
-          (items as ExportPayload[]).map(i => ({
-            sale_order_id: o.id,
-            product_id: i.product_id,
-            warehouse_id: i.warehouse_id,
-            supplier: i.supplier,
-            batch: i.batch,
-            small_unit_id: i.small_unit_id,
-            quantity: Number(i.quantity || 0),
-            unit_price: Number(i.unit_price || 0),
-            total: Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)),
-            is_pending: isPending,
-          })),
-          { transaction: t },
-        );
-
-        return o;
+      const order = await createSaleOrder({
+        customerName,
+        customerPhone,
+        customerAddress,
+        brokerName,
+        saleType,
+        items,
+        paid,
+        paymentStatus,
+        saleDate,
+        userId,
       });
 
-      const refreshed = await fetchOrder(order.id);
-      sendSuccess(res, formatOrder(refreshed!), 'Tạo hóa đơn thành công', 201);
+      sendSuccess(res, formatOrder(order!), 'Tạo hóa đơn thành công', 201);
     } catch (err) {
       if (err instanceof BusinessError) {
-        sendError(res, err.errorCode, err.message, err.status); return;
+        sendError(res, err.errorCode, err.message, err.status);
+        return;
       }
       throw err;
     }
@@ -161,322 +148,87 @@ export class SaleController {
     const { id } = req.params;
     const { customerName, customerPhone, customerAddress, brokerName, saleType, items, paid, paymentStatus, saleDate } = req.body;
 
-    const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
-    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
-    const wasReturned = order.returned;
-
     if (!Array.isArray(items) || items.length === 0) {
-      sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400); return;
+      sendError(res, ErrorCode.REQUIRED, 'Hóa đơn phải có ít nhất 1 dòng', 400);
+      return;
     }
 
-    const status = normalizePaymentStatus(paymentStatus, paid, order.payment_status);
-    const isPending = status === 'pending';
-
-    const totalAmount = (items as ExportPayload[]).reduce(
-      (sum, i) => sum + Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)), 0,
-    );
-
     try {
-      await sequelize.transaction(async (t) => {
-        // Trừ items cũ khỏi balance (trigger DELETE chỉ chạy khi is_pending=0).
-        // Đồng thời clear pending reservation của đơn này khỏi assertStockAvailable kế tiếp.
-        await StockExport.destroy({ where: { sale_order_id: id }, transaction: t });
-        await assertStockAvailable(items, t);
-
-        await order.update({
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_address: customerAddress,
-          broker_name: saleType === 'broker' ? (brokerName || null) : null,
-          sale_type: saleType,
-          total_amount: totalAmount,
-          paid: status === 'paid',
-          payment_status: status,
-          sale_date: saleDate,
-          ...(wasReturned ? { returned: false, returned_at: null, items_snapshot: null } : {}),
-        }, { transaction: t });
-
-        await StockExport.bulkCreate(
-          (items as ExportPayload[]).map(i => ({
-            sale_order_id: Number(id),
-            product_id: i.product_id,
-            warehouse_id: i.warehouse_id,
-            supplier: i.supplier,
-            batch: i.batch,
-            small_unit_id: i.small_unit_id,
-            quantity: Number(i.quantity || 0),
-            unit_price: Number(i.unit_price || 0),
-            total: Number(i.total ?? (i.quantity || 0) * (i.unit_price || 0)),
-            is_pending: isPending,
-          })),
-          { transaction: t },
-        );
+      const order = await updateSaleOrder(Number(id), {
+        customerName,
+        customerPhone,
+        customerAddress,
+        brokerName,
+        saleType,
+        items,
+        paid,
+        paymentStatus,
+        saleDate,
       });
 
-      const refreshed = await fetchOrder(Number(id));
-      sendSuccess(res, formatOrder(refreshed!), 'Cập nhật hóa đơn thành công');
+      if (!order) {
+        sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404);
+        return;
+      }
+
+      sendSuccess(res, formatOrder(order), 'Cập nhật hóa đơn thành công');
     } catch (err) {
       if (err instanceof BusinessError) {
-        sendError(res, err.errorCode, err.message, err.status); return;
+        sendError(res, err.errorCode, err.message, err.status);
+        return;
       }
       throw err;
     }
   };
 
   remove = async (req: Request, res: Response): Promise<void> => {
-    const order = await SaleOrder.findByPk(req.params.id);
-    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
-
-    // MySQL không kích hoạt row-level trigger khi xóa qua FK CASCADE.
-    // Phải xóa stock_exports thủ công để trigger trg_se_after_delete cộng trả tồn,
-    // sau đó mới destroy sale_order. Nếu đơn đã hoàn hàng thì không còn stock_exports
-    // nào để xóa, destroy chỉ còn xóa header.
-    await sequelize.transaction(async (t) => {
-      await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
-      await order.destroy({ transaction: t });
-    });
-    sendSuccess(res, null, 'Xóa hóa đơn thành công');
+    try {
+      const removed = await deleteSaleOrder(Number(req.params.id));
+      if (!removed) {
+        sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404);
+        return;
+      }
+      sendSuccess(res, null, 'Xóa hóa đơn thành công');
+    } catch (err) {
+      if (err instanceof BusinessError) {
+        sendError(res, err.errorCode, err.message, err.status);
+        return;
+      }
+      throw err;
+    }
   };
 
   confirmShipment = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
-    const { paymentStatus } = req.body as { paymentStatus?: string };
-    const nextStatus = paymentStatus === 'paid' ? 'paid' : 'unpaid';
-
-    const order = await SaleOrder.findByPk(id, { include: [{ model: StockExport, as: 'items' }] });
-    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
-    if (order.returned) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Đơn đã hoàn hàng', 400); return;
-    }
-    if (order.payment_status !== 'pending') {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Đơn không ở trạng thái Chờ xuất hàng', 400); return;
-    }
-
-    const items = (order.items as any[] | undefined) || [];
-    if (items.length === 0) {
-      sendError(res, ErrorCode.REQUIRED, 'Đơn không có dòng nào', 400); return;
-    }
-
     try {
-      await sequelize.transaction(async (t) => {
-        // Items hiện đang is_pending=1 — destroy không trừ kho (trigger skip)
-        await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
-        await assertStockAvailable(items as ExportPayload[], t);
-
-        await order.update({
-          paid: nextStatus === 'paid',
-          payment_status: nextStatus,
-        }, { transaction: t });
-
-        await StockExport.bulkCreate(
-          items.map((i: any) => ({
-            sale_order_id: order.id,
-            product_id: i.product_id,
-            warehouse_id: i.warehouse_id,
-            supplier: i.supplier,
-            batch: i.batch,
-            small_unit_id: i.small_unit_id,
-            quantity: Number(i.quantity || 0),
-            unit_price: Number(i.unit_price || 0),
-            total: Number(i.total || 0),
-            is_pending: false,
-          })),
-          { transaction: t },
-        );
-      });
-
-      const refreshed = await fetchOrder(order.id);
-      sendSuccess(res, formatOrder(refreshed!), 'Xác nhận xuất hàng thành công');
+      const order = await confirmShipment(Number(req.params.id), req.body?.paymentStatus);
+      if (!order) {
+        sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404);
+        return;
+      }
+      sendSuccess(res, formatOrder(order), 'Xác nhận xuất hàng thành công');
     } catch (err) {
       if (err instanceof BusinessError) {
-        sendError(res, err.errorCode, err.message, err.status); return;
+        sendError(res, err.errorCode, err.message, err.status);
+        return;
       }
       throw err;
     }
   };
 
   returnOrder = async (req: Request, res: Response): Promise<void> => {
-    const order = await fetchOrder(Number(req.params.id));
-    if (!order) { sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404); return; }
-    if (order.returned) {
-      sendError(res, ErrorCode.FORBIDDEN_RESOURCE, 'Hóa đơn đã được hoàn hàng', 400); return;
+    try {
+      const order = await returnSaleOrder(Number(req.params.id));
+      if (!order) {
+        sendError(res, ErrorCode.NOT_FOUND, 'Không tìm thấy hóa đơn', 404);
+        return;
+      }
+      sendSuccess(res, formatOrder(order), 'Hoàn hàng thành công');
+    } catch (err) {
+      if (err instanceof BusinessError) {
+        sendError(res, err.errorCode, err.message, err.status);
+        return;
+      }
+      throw err;
     }
-
-    const detail = formatOrderDetail(order);
-    const snapshot = detail.items;
-
-    await sequelize.transaction(async (t) => {
-      // Snapshot lại items để FE còn xem được khi đơn đã hoàn (stock_exports sẽ bị destroy).
-      await order.update(
-        { items_snapshot: snapshot, returned: true, returned_at: new Date() },
-        { transaction: t },
-      );
-      // Xóa stock_exports thủ công để trigger trg_se_after_delete cộng trả tồn.
-      await StockExport.destroy({ where: { sale_order_id: order.id }, transaction: t });
-    });
-
-    const refreshed = await fetchOrder(order.id);
-    sendSuccess(res, formatOrder(refreshed!), 'Hoàn hàng thành công');
   };
 }
-
-function normalizePaymentStatus(
-  paymentStatus: unknown,
-  paid: unknown,
-  fallback: 'paid' | 'unpaid' | 'pending' = 'unpaid',
-): 'paid' | 'unpaid' | 'pending' {
-  if (paymentStatus === 'paid' || paymentStatus === 'unpaid' || paymentStatus === 'pending') {
-    return paymentStatus;
-  }
-  if (paid === true || paid === 'true' || paid === 1) return 'paid';
-  if (paid === false || paid === 'false' || paid === 0) return 'unpaid';
-  return fallback;
-}
-
-class BusinessError extends Error {
-  constructor(public errorCode: number, public status: number, message: string) { super(message); }
-}
-
-async function assertStockAvailable(items: ExportPayload[], t: Transaction): Promise<void> {
-  // Gộp request theo (product, warehouse, supplier, batch) để check tổng cần
-  const grouped = new Map<string, number>();
-  for (const i of items) {
-    const key = `${i.product_id}|${i.warehouse_id}|${i.supplier}|${i.batch}`;
-    grouped.set(key, (grouped.get(key) || 0) + Number(i.quantity || 0));
-  }
-
-  for (const [key, needed] of grouped.entries()) {
-    const [product_id, warehouse_id, supplier, batch] = key.split('|');
-    const balance = await InventoryBalance.findOne({
-      where: {
-        product_id: Number(product_id),
-        warehouse_id: Number(warehouse_id),
-        supplier, batch,
-      },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
-    if (!balance) {
-      throw new BusinessError(
-        ErrorCode.EMPTY, 400,
-        `Lô "${batch}" (NCC ${supplier}) không còn tồn trong kho.`,
-      );
-    }
-    const raw = balance.stock_pieces || 0;
-    const pendingSum = (await StockExport.sum('quantity', {
-      where: {
-        is_pending: true,
-        product_id: Number(product_id),
-        warehouse_id: Number(warehouse_id),
-        supplier, batch,
-      },
-      transaction: t,
-    })) || 0;
-    const available = raw - pendingSum;
-    if (available < needed) {
-      throw new BusinessError(
-        ErrorCode.EMPTY, 400,
-        `Tồn lô "${batch}" không đủ: còn ${available}, cần ${needed}.`,
-      );
-    }
-  }
-}
-
-async function generateInvoiceCode(t: Transaction): Promise<string> {
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  const prefix = `HD-${dateStr}-`;
-
-  const latest = await SaleOrder.findOne({
-    where: { invoice_code: { [Op.like]: `${prefix}%` } },
-    order: [['invoice_code', 'DESC']],
-    transaction: t,
-    lock: t.LOCK.UPDATE,
-  });
-
-  const nextSeq = latest ? Number(latest.invoice_code.split('-')[2]) + 1 : 1;
-  return `${prefix}${String(nextSeq).padStart(3, '0')}`;
-}
-
-async function fetchOrder(id: number) {
-  return SaleOrder.findByPk(id, {
-    include: [{
-      model: StockExport, as: 'items',
-      // Lấy units_per_carton từ stock_imports (theo product+supplier+batch, ưu tiên cùng kho).
-      // Nhúng vào từng item để FE không phải tra inventory list (tránh lỗi khi lô đã hết tồn).
-      attributes: {
-        include: [
-          [literal(`(
-            SELECT units_per_carton FROM stock_imports
-            WHERE product_id = \`items\`.\`product_id\`
-              AND supplier = \`items\`.\`supplier\`
-              AND batch = \`items\`.\`batch\`
-            ORDER BY (warehouse_id = \`items\`.\`warehouse_id\`) DESC,
-                     import_date DESC, id DESC
-            LIMIT 1
-          )`), 'units_per_carton'],
-        ],
-      },
-      include: [
-        { model: Product, as: 'product' },
-        { model: Warehouse, as: 'warehouse' },
-        { model: SmallUnit, as: 'smallUnit' },
-      ],
-    }],
-  });
-}
-
-function baseOrderFields(json: any) {
-  return {
-    id: json.id, key: String(json.id),
-    invoice_code: json.invoice_code,
-    customer_name: json.customer_name,
-    customer_phone: json.customer_phone,
-    customer_address: json.customer_address,
-    broker_name: json.broker_name || null,
-    sale_type: json.sale_type,
-    total_amount: Number(json.total_amount),
-    paid: Boolean(json.paid),
-    payment_status: json.payment_status || (json.paid ? 'paid' : 'unpaid'),
-    sale_date: json.sale_date,
-    returned: Boolean(json.returned),
-    returned_at: json.returned_at || null,
-    created_at: json.created_at,
-    updated_at: json.updated_at,
-  };
-}
-
-function formatOrderSummary(o: any) {
-  const json = o.toJSON ? o.toJSON() : o;
-  return { ...baseOrderFields(json), items_count: Number(json.items_count) || 0 };
-}
-
-function formatOrderDetail(o: any) {
-  const json = o.toJSON ? o.toJSON() : o;
-  const liveItems = (json.items || []).map((i: any) => ({
-    id: i.id,
-    product_id: i.product_id,
-    product_name: i.product?.name || null,
-    warehouse_id: i.warehouse_id,
-    warehouse_name: i.warehouse?.name || null,
-    supplier: i.supplier,
-    batch: i.batch,
-    small_unit_id: i.small_unit_id,
-    small_unit: i.smallUnit ? { id: i.smallUnit.id, code: i.smallUnit.code, label: i.smallUnit.label } : null,
-    quantity: Number(i.quantity) || 0,
-    unit_price: Number(i.unit_price),
-    total: Number(i.total),
-    units_per_carton: i.units_per_carton != null ? Number(i.units_per_carton) : 0,
-  }));
-
-  // Đơn đã hoàn hàng: stock_exports đã bị destroy, đọc từ snapshot để FE vẫn xem/sửa được.
-  const items =
-    liveItems.length === 0 && json.returned && Array.isArray(json.items_snapshot)
-      ? json.items_snapshot
-      : liveItems;
-
-  return { ...baseOrderFields(json), items, items_count: items.length };
-}
-
-// Backward-compat alias cho create/update/return/confirmShipment.
-const formatOrder = formatOrderDetail;

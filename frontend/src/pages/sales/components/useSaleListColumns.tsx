@@ -5,6 +5,7 @@ import { ActionColumn } from '@/components/molecules/action-column';
 import { paymentStatusLabels, saleTypeLabels } from '@/constants/options';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { sttColumn } from '@/utils/tableColumns';
+import { canConfirmShipment, canDeleteOrder, canReturnOrder, isCancelledOrder } from '../statusRules';
 import { SaleOrderRow } from '../types';
 
 type SortableField = 'customer_name' | 'status' | 'sale_date' | 'total_amount';
@@ -105,11 +106,11 @@ export const useSaleListColumns = ({
   {
     title: 'Hành động',
     key: 'actions',
-    align: 'center' as const,
-    width: 180,
-    render: (_: any, r: SaleOrderRow) => (
+      align: 'center' as const,
+      width: 180,
+      render: (_: any, r: SaleOrderRow) => (
       <div className="flex items-center justify-center gap-1">
-        {r.payment_status === 'pending' && !r.returned && onConfirmShipment && (
+        {canConfirmShipment(r) && onConfirmShipment && (
           <Dropdown
             trigger={['click']}
             menu={{
@@ -134,9 +135,9 @@ export const useSaleListColumns = ({
         )}
         <ActionColumn
           onView={() => onView(r)}
-          onEdit={() => onEdit(r)}
-          onReturn={r.returned || r.payment_status === 'pending' ? undefined : () => onReturn(r)}
-          onDelete={() => onDelete(r)}
+          onEdit={isCancelledOrder(r) ? undefined : () => onEdit(r)}
+          onReturn={canReturnOrder(r) ? () => onReturn(r) : undefined}
+          onDelete={canDeleteOrder(r) ? () => onDelete(r) : undefined}
           deleteTitle="Xóa hóa đơn"
           deleteDescription={`Xóa hóa đơn của khách "${r.customer_name || '—'}"?`}
           returnDescription={`Hoàn lại hàng của hóa đơn "${r.customer_name || '—'}" về kho?`}
