@@ -78,22 +78,20 @@ export async function createSaleOrder(params: {
     await assertStockAvailable(items, t);
 
     const invoiceCode = await generateInvoiceCode(t);
-    const created = await SaleOrder.create(
-      {
-        invoice_code: invoiceCode,
-        customer_name: customerName,
-        customer_phone: customerPhone || null,
-        customer_address: customerAddress || null,
-        broker_name: saleType === 'broker' ? (brokerName || null) : null,
-        sale_type: saleType as 'wholesale' | 'retail' | 'broker',
-        total_amount: totalAmount,
-        paid: status === 'paid',
-        payment_status: status,
-        sale_date: saleDate || new Date(),
-        created_by_user_id: userId,
-      },
-      { transaction: t },
-    );
+    const createdPayload: any = {
+      invoice_code: invoiceCode,
+      customer_name: customerName,
+      customer_phone: customerPhone || null,
+      customer_address: customerAddress || null,
+      broker_name: saleType === 'broker' ? (brokerName || null) : null,
+      sale_type: saleType as 'wholesale' | 'retail' | 'broker',
+      total_amount: totalAmount,
+      paid: status === 'paid',
+      payment_status: status,
+      sale_date: normalizeSaleDate(saleDate) || new Date(),
+      created_by_user_id: userId,
+    };
+    const created = await SaleOrder.create(createdPayload, { transaction: t });
 
     await replaceOrderItems(created.id, items, isPending, t);
     return created;
@@ -152,23 +150,22 @@ export async function updateSaleOrder(
         0,
       );
 
-      await order.update(
-        {
-          customer_name: customerName,
-          customer_phone: customerPhone,
-          customer_address: customerAddress,
-          broker_name: saleType === 'broker' ? (brokerName || null) : null,
-          sale_type: saleType as 'wholesale' | 'retail' | 'broker',
-          total_amount: snapshotTotal,
-          paid: false,
-          payment_status: 'cancelled',
-          sale_date: saleDate,
-          returned: false,
-          returned_at: null,
-          items_snapshot: snapshot,
-        },
-        { transaction: t },
-      );
+      const cancelledPayload: any = {
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_address: customerAddress,
+        broker_name: saleType === 'broker' ? (brokerName || null) : null,
+        sale_type: saleType as 'wholesale' | 'retail' | 'broker',
+        total_amount: snapshotTotal,
+        paid: false,
+        payment_status: 'cancelled',
+        sale_date: normalizeSaleDate(saleDate),
+        returned: false,
+        returned_at: null,
+        items_snapshot: snapshot,
+      };
+
+      await order.update(cancelledPayload, { transaction: t });
 
       await StockExport.destroy({ where: { sale_order_id: id }, transaction: t });
       return;
@@ -177,21 +174,20 @@ export async function updateSaleOrder(
     await StockExport.destroy({ where: { sale_order_id: id }, transaction: t });
     await assertStockAvailable(items, t);
 
-    await order.update(
-      {
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_address: customerAddress,
-        broker_name: saleType === 'broker' ? (brokerName || null) : null,
-        sale_type: saleType as 'wholesale' | 'retail' | 'broker',
-        total_amount: totalAmount,
-        paid: status === 'paid',
-        payment_status: status,
-        sale_date: saleDate,
-        ...(wasReturned ? { returned: false, returned_at: null, items_snapshot: null } : {}),
-      },
-      { transaction: t },
-    );
+    const updatePayload: any = {
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      customer_address: customerAddress,
+      broker_name: saleType === 'broker' ? (brokerName || null) : null,
+      sale_type: saleType as 'wholesale' | 'retail' | 'broker',
+      total_amount: totalAmount,
+      paid: status === 'paid',
+      payment_status: status,
+      sale_date: normalizeSaleDate(saleDate),
+      ...(wasReturned ? { returned: false, returned_at: null, items_snapshot: null } : {}),
+    };
+
+    await order.update(updatePayload, { transaction: t });
 
     await replaceOrderItems(id, items, isPending, t);
   });
@@ -482,4 +478,10 @@ async function generateInvoiceCode(transaction: Transaction): Promise<string> {
 
   const nextSeq = latest ? Number(latest.invoice_code.split('-')[2]) + 1 : 1;
   return `${prefix}${String(nextSeq).padStart(3, '0')}`;
+}
+
+function normalizeSaleDate(value?: string | Date) {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  return value;
 }
